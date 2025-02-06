@@ -12,7 +12,7 @@ class Bot(commands.Bot):
         super().__init__(
             command_prefix='/',
             intents=intents,
-            application_id='1336770228134088846'  
+            application_id='1336770228134088846'
         )
     
     async def setup_hook(self):
@@ -28,11 +28,11 @@ REQUEST_CHANNEL = 'staff-requests'
 INFRACTIONS_CHANNEL = 'infractions'
 PROMOTIONS_CHANNEL = 'promotions'
 
-#Helper function.
+# Helper function.
 async def get_channel_by_name(guild, channel_name):
     return discord.utils.get(guild.text_channels, name=channel_name)
 
-#Bot setup.
+# Bot setup.
 @bot.event
 async def on_ready():
     print(f'Bot logged in as {bot.user}')
@@ -44,7 +44,7 @@ async def on_ready():
         )
     )
 
-#When a member joins send a message.
+# When a member joins send a message.
 @bot.event
 async def on_member_join(member):
     channel = await get_channel_by_name(member.guild, WELCOME_CHANNEL)
@@ -59,7 +59,7 @@ async def on_member_join(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
-#When a member leaves, send a message.
+# When a member leaves, send a message.
 @bot.event
 async def on_member_remove(member):
     channel = await get_channel_by_name(member.guild, WELCOME_CHANNEL)
@@ -74,14 +74,14 @@ async def on_member_remove(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
-@bot.tree.command(name="request", destription="Request more staff to the server")
+@bot.tree.command(name="request", description="Request more staff to the server")
 async def request(interaction: discord.Interaction):
-    if not interaction.user.guild_permission.manage.messages:
+    if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
         return
+    
     channel = await get_channel_by_name(interaction.guild, REQUEST_CHANNEL)
-
-    if channel == await get_channel_by_name(interaction.guild, REQUEST_CHANNEL):
+    if channel:
         embed = discord.Embed(
             title="Staff request",
             description="@ There are low staff in the server!",
@@ -93,7 +93,7 @@ async def request(interaction: discord.Interaction):
         await channel.send(content=content, embed=embed)
     else:
         await interaction.response.send_message("Internal error: Channel not found.")
-    
+
 @bot.tree.command(name="infract", description="Infract an user.")
 async def infract(interaction: discord.Interaction, User: str, punishment: str, Reason: str):
     if not interaction.user.guild_permissions.manage_messages:
@@ -101,8 +101,7 @@ async def infract(interaction: discord.Interaction, User: str, punishment: str, 
         return
 
     channel = await get_channel_by_name(interaction.guild, INFRACTIONS_CHANNEL)
-
-    if channel = await get_channel_by_name(interaction.guild, INFRACTIONS_CHANNEL):
+    if channel:
         embed = discord.Embed(
             title="Infraction",
             description=f'User getting infracted: {User} \n Punishment: {punishment} \n Reason: {Reason}',
@@ -112,36 +111,30 @@ async def infract(interaction: discord.Interaction, User: str, punishment: str, 
         embed.set_footer(text=f"Issued by {interaction.user.name}")
         content = ""
         await channel.send(content=content, embed=embed)
-     else:
+    else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-
 @bot.tree.command(name="promote", description="Promote an user.")
- async def promote(interaction: discord.Interaction, User: str, Current_Rank: str, New_Rank: str, Reason: str):
-     if not interaction.user.guild_permissions.manage_messages:
+async def promote(interaction: discord.Interaction, User: str, Current_Rank: str, New_Rank: str, Reason: str):
+    if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
          
     channel = await get_channel_by_name(interaction.guild, PROMOTIONS_CHANNEL)
-
-    if channel = await get_channel_by_name(interaction.guild, PROMOTIONS_CHANNEL):
+    if channel:
         embed = discord.Embed(
-            title="Infraction",
-            description=f'User getting promoted: {User} \n Current Rank: {Current_Rank} New Rank: {New_Rank} \n Reason: {Reason}',
-            color=discord.Color.red(),
+            title="Promotion",
+            description=f'User getting promoted: {User} \n Current Rank: {Current_Rank} \n New Rank: {New_Rank} \n Reason: {Reason}',
+            color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
-        
         embed.set_footer(text=f"Promoted by {interaction.user.name}")
         content = ""
         await channel.send(content=content, embed=embed)
-        
-     else:
+    else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-
-
-#Announce command.
+# Announce command.
 @bot.tree.command(name="announce", description="Send an announcement to the announcements channel")
 async def announce(interaction: discord.Interaction, message: str, ping_everyone: bool = False):
     if not interaction.user.guild_permissions.manage_messages:
@@ -163,7 +156,7 @@ async def announce(interaction: discord.Interaction, message: str, ping_everyone
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-#Error handler.
+# Error handler.
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.MissingPermissions):
@@ -174,7 +167,6 @@ async def on_command_error(ctx, error):
         await ctx.send("An error occurred while processing your command.")
 
 def main():
-    bot.run('***')
-
+    bot.run('***')  
 if __name__ == "__main__":
     main()
