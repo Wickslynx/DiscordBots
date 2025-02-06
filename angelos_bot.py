@@ -142,7 +142,7 @@ async def promote(interaction: discord.Interaction, user: str, current_rank: str
         content = ""
         await channel.send(content=content, embed=embed)
     else:
-        await interaction.response.send_message("Internal error: channel not found!", ephemeral=True
+        await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
                                                 
 # Error handler.
