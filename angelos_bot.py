@@ -20,7 +20,7 @@ async def on_member_join(member):
 async def on_member_remove(member):
     channel = discord.utils.get(member.guild.text_channels, name='general')
     if channel is not None:
-        await channel.send(f'{member.mention} didn't enoy his stay :(')
+        await channel.send(f'{member.mention} didn\'t enjoy his stay :(')
         
 @bot.command()
 async def announce(ctx, *, message: str):
