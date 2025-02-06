@@ -73,13 +73,13 @@ async def on_member_remove(member):
         await channel.send(embed=embed)
 
 @bot.tree.command(name="request", destription="Request more staff to the server")
-async def request(interaction; discord.Interaction):
+async def request(interaction: discord.Interaction):
     if not interaction.user.guild_permission.manage.messages:
         await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
         return
     channel = await get_channel_by_name(interaction.guild, REQUEST_CHANNEL)
 
-    if channel = await get_channel_by_name(interaction.guild, REQUEST_CHANNEL):
+    if channel == await get_channel_by_name(interaction.guild, REQUEST_CHANNEL):
         embed = discord.Embed(
             title="Staff request",
             description="@ There are low staff in the server!",
