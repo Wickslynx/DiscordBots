@@ -2,38 +2,34 @@ import discord
 from discord.ext import commands
 
 intents = discord.Intents.default()
-intents.messages = True
+intents.members = True
 
-bot = commands.Bot(command_prefix="/", intents=intents)
-afk_messages = {}
-
-@bot.command(name="afk")
-async def afk(ctx, *, user_message: str):
-    afk_messages[ctx.author.id] = (original_nick, user_message)
-    await ctx.author.edit(nick=f"AFK | {ctx.author.display_name}")
-    await ctx.send(f"AFK: {ctx.author.name}: {user_message}")
-
-@bot.command(name="infract")
-async def infract(ctx, user: discord.Member, new_rank: str, *, notes: str):
-    
-    await ctx.send(f"{user} The high ranking team has decided to infract you. -------- New rank: {new_rank}. Notes: {notes}")
+bot = commands.Bot(command_prefix='/', intents=intents)
 
 @bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
+async def on_ready():
+    print(f'The bot has finished setting up as {bot.user}')
 
-    if message.author.id in afk_messages:
-        original_nick, _ = afk_messages.pop(message.author.id)
-        await message.author.edit(nick=original_nick)
-        await message.channel.send(f"{message.author.name} is no longer AFK.")
+@bot.event
+async def on_member_join(member):
+    channel = discord.utils.get(member.guild.text_channels, name='general')
+    if channel is not None:
+        await channel.send(f'Hello {member.mention}, welcome to Los Angelos Roleplay!')
+        
+@bot.event
+async def on_member_remove(member):
+    channel = discord.utils.get(member.guild.text_channels, name='general')
+    if channel is not None:
+        await channel.send(f'{member.mention} didn't enoy his stay :(')
+        
+@bot.command()
+async def announce(ctx, *, message: str):
+    channel = discord.utils.get(ctx.guild.text_channels, name='announcements')
+    if channel is not None:
+        await channel.send(message)
 
-    for user_id, (original_nick, afk_msg) in afk_messages.items():
-        if message.mentions and any(user_id == mention.id for mention in message.mentions):
-            await message.channel.send(f"{message.guild.get_member(user_id).display_name} is AFK: {afk_msg}")
 
-    await bot.process_commands(message)
 
-token = "**************************************"
+token = "****************"
 
 bot.run(token)
