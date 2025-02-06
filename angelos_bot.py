@@ -23,15 +23,16 @@ class Bot(commands.Bot):
 # Create bot instance.
 bot = Bot()
 
-WELCOME_CHANNEL = 'general'
-ANNOUNCEMENT_CHANNEL = 'announcements'
-REQUEST_CHANNEL = 'staff-requests'
-INFRACTIONS_CHANNEL = 'infractions'
-PROMOTIONS_CHANNEL = 'promotions'
+# Channel IDs.
+WELCOME_CHANNEL_ID = 1223929486429524078 
+ANNOUNCEMENT_CHANNEL_ID = 1223929286528991253  
+REQUEST_CHANNEL_ID = 1337111618517073972  
+INFRACTIONS_CHANNEL_ID = 1307758472179355718
+PROMOTIONS_CHANNEL_ID = 1310272690434736158 
 
 # Helper function.
-async def get_channel_by_name(guild, channel_name):
-    return discord.utils.get(guild.text_channels, name=channel_name)
+async def get_channel_by_id(guild, channel_id):
+    return guild.get_channel(channel_id)
 
 # Bot setup.
 @bot.event
@@ -48,7 +49,7 @@ async def on_ready():
 # When a member joins send a message.
 @bot.event
 async def on_member_join(member):
-    channel = await get_channel_by_name(member.guild, WELCOME_CHANNEL)
+    channel = await get_channel_by_id(member.guild, WELCOME_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
             title="New Member!",
@@ -63,7 +64,7 @@ async def on_member_join(member):
 # When a member leaves, send a message.
 @bot.event
 async def on_member_remove(member):
-    channel = await get_channel_by_name(member.guild, WELCOME_CHANNEL)
+    channel = await get_channel_by_id(member.guild, WELCOME_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
             title="Member Left",
@@ -82,7 +83,7 @@ async def request(interaction: discord.Interaction):
         await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
         return
     
-    channel = await get_channel_by_name(interaction.guild, REQUEST_CHANNEL)
+    channel = await get_channel_by_id(interaction.guild, REQUEST_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
             title="Staff request",
@@ -104,7 +105,7 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
 
-    channel = await get_channel_by_name(interaction.guild, INFRACTIONS_CHANNEL)
+    channel = await get_channel_by_id(interaction.guild, INFRACTIONS_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
             title="Infraction",
@@ -125,7 +126,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, curren
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
 
-    channel = await get_channel_by_name(interaction.guild, PROMOTIONS_CHANNEL)
+    channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
             title="Promotion",
