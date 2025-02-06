@@ -101,7 +101,10 @@ async def request(interaction: discord.Interaction):
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
 
-
+@bot.tree.command(name="say", description="Make the bot say a message.")
+async def say(interaction: discord.Interaction, message: str):
+    await interaction.send_message("message")
+    
 
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
