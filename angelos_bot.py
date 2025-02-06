@@ -29,6 +29,7 @@ ANNOUNCEMENT_CHANNEL_ID = 1223929286528991253
 REQUEST_CHANNEL_ID = 1337111618517073972  
 INFRACTIONS_CHANNEL_ID = 1307758472179355718
 PROMOTIONS_CHANNEL_ID = 1310272690434736158 
+SUGGEST_CHANNEL_ID = 1223930187868016670
 
 # Helper function.
 async def get_channel_by_id(guild, channel_id):
@@ -97,6 +98,32 @@ async def request(interaction: discord.Interaction):
         await interaction.response.send_message("Staff request sent!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
+
+
+
+
+@bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
+async def suggest(interaction: discord.Interaction, suggestion: str):
+    if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
+        return
+    
+    channel = await get_channel_by_id(interaction.guild, SUGGEST_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(
+            title="Suggestion:",
+            description=suggestion,
+            color=discord.Color.yellow(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"Suggested by {interaction.user.name}")
+        await channel.send(content=content, embed=embed)
+        await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
+    else:
+        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
+
+
+
 
 # Infract command. Takes in user, punishment, and reason.
 @bot.tree.command(name="infract", description="Infract a user.")
