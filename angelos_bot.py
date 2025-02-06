@@ -119,8 +119,8 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
         embed.set_footer(text=f"Suggested by {interaction.user.name}")
         sent_message = await channel.send(content=content, embed=embed)
-        await sent_message.add_reaction('👍')  # Upvote
-        await sent_message.add_reaction('👎')  # Downvote
+        await sent_message.add_reaction('✅')  # Upvote
+        await sent_message.add_reaction('❌')  # Downvote
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
