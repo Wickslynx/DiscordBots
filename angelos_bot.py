@@ -164,6 +164,7 @@ async def announce(interaction: discord.Interaction, message: str, ping_everyone
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
+
 # Error handler.
 @bot.event
 async def on_command_error(ctx, error):
