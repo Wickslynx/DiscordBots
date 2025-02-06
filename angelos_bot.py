@@ -130,7 +130,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, curren
     if channel:
         embed = discord.Embed(
             title="Promotion",
-            description=f'User getting promoted: {user.mention} \n Current Rank: {current_rank} \n New Rank: {new_rank} \n Reason: {reason}',
+            description=f'User getting promoted: {user.mention} \n\n Current Rank: {current_rank} \n\n New Rank: {new_rank} \n\n Reason: {reason}',
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
