@@ -74,6 +74,8 @@ async def on_member_remove(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
+
+#Request command.
 @bot.tree.command(name="request", description="Request more staff to the server")
 async def request(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.manage_messages:
@@ -94,6 +96,7 @@ async def request(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Internal error: Channel not found.")
 
+#Infract command. Takes in User, punishment and reason.
 @bot.tree.command(name="infract", description="Infract an user.")
 async def infract(interaction: discord.Interaction, User: str, punishment: str, Reason: str):
     if not interaction.user.guild_permissions.manage_messages:
@@ -114,6 +117,7 @@ async def infract(interaction: discord.Interaction, User: str, punishment: str, 
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
+#Promote command.
 @bot.tree.command(name="promote", description="Promote an user.")
 async def promote(interaction: discord.Interaction, User: str, Current_Rank: str, New_Rank: str, Reason: str):
     if not interaction.user.guild_permissions.manage_messages:
