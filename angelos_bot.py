@@ -16,13 +16,9 @@ class Bot(commands.Bot):
         )
     
     async def setup_hook(self):
-        for guild in self.guilds:
-            try:
-                await self.tree.sync(guild=guild)
-                print(f"Synced commands for guild {guild.name}")
-            except Exception as e:
-                print(f"Failed to sync commands for guild {guild.name}: {e}")
-
+        # Global command sync
+        await self.tree.sync()
+        print("Commands synced globally")
 
 # Create bot instance.
 bot = Bot()
@@ -79,10 +75,8 @@ async def on_member_remove(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
-
 #Request command.
 @bot.tree.command(name="request", description="Request more staff to the server")
-#@commands.has_role("Staff-team")
 async def request(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
@@ -99,12 +93,13 @@ async def request(interaction: discord.Interaction):
         embed.set_footer(text=f"Requested by {interaction.user.name}")
         content = "@here"
         await channel.send(content=content, embed=embed)
+        await interaction.response.send_message("Staff request sent!", ephemeral=True)
     else:
-        await interaction.response.send_message("Internal error: Channel not found.")
+        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
 # Infract command. Takes in user, punishment, and reason.
 @bot.tree.command(name="infract", description="Infract a user.")
-async def infract(interaction: discord.Interaction, user: str, punishment: str, reason: str):
+async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
@@ -113,19 +108,19 @@ async def infract(interaction: discord.Interaction, user: str, punishment: str, 
     if channel:
         embed = discord.Embed(
             title="Infraction",
-            description=f'User getting infracted: {user} \n Punishment: {punishment} \n Reason: {reason}',
+            description=f'User getting infracted: {user.mention} \n Punishment: {punishment} \n Reason: {reason}',
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Issued by {interaction.user.name}")
-        content = ""
-        await channel.send(content=content, embed=embed)
+        await channel.send(embed=embed)
+        await interaction.response.send_message("Infraction logged!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
 # Promote command.
 @bot.tree.command(name="promote", description="Promote a user.")
-async def promote(interaction: discord.Interaction, user: str, current_rank: str, new_rank: str, reason: str):
+async def promote(interaction: discord.Interaction, user: discord.Member, current_rank: str, new_rank: str, reason: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
@@ -134,17 +129,16 @@ async def promote(interaction: discord.Interaction, user: str, current_rank: str
     if channel:
         embed = discord.Embed(
             title="Promotion",
-            description=f'User getting promoted: {user} \n Current Rank: {current_rank} \n New Rank: {new_rank} \n Reason: {reason}',
+            description=f'User getting promoted: {user.mention} \n Current Rank: {current_rank} \n New Rank: {new_rank} \n Reason: {reason}',
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Promoted by {interaction.user.name}")
-        content = ""
-        await channel.send(content=content, embed=embed)
+        await channel.send(embed=embed)
+        await interaction.response.send_message("Promotion logged!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-                                                
 # Error handler.
 @bot.event
 async def on_command_error(ctx, error):
@@ -154,9 +148,11 @@ async def on_command_error(ctx, error):
         await ctx.send("Command not found!")
     else:
         await ctx.send("An error occurred while processing your command.")
-token =
+
+token = ""
 
 def main():
-    bot.run(token)  
+    bot.run(token)
+
 if __name__ == "__main__":
     main()
