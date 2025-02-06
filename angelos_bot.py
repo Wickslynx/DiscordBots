@@ -25,6 +25,8 @@ bot = Bot()
 WELCOME_CHANNEL = 'general'
 ANNOUNCEMENT_CHANNEL = 'announcements'
 REQUEST_CHANNEL = 'staff-requests'
+INFRACTIONS_CHANNEL = 'infractions'
+PROMOTIONS_CHANNEL = 'promotions'
 
 #Helper function.
 async def get_channel_by_name(guild, channel_name):
@@ -92,9 +94,53 @@ async def request(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Internal error: Channel not found.")
     
+@bot.tree.command(name="infract", description="Infract an user.")
+async def infract(interaction: discord.Interaction, User: str, punishment: str, Reason: str):
+    if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+        return
+
+    channel = await get_channel_by_name(interaction.guild, INFRACTIONS_CHANNEL)
+
+    if channel = await get_channel_by_name(interaction.guild, INFRACTIONS_CHANNEL):
+        embed = discord.Embed(
+            title="Infraction",
+            description=f'User getting infracted: {User} \n Punishment: {punishment} \n Reason: {Reason}',
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"Issued by {interaction.user.name}")
+        content = ""
+        await channel.send(content=content, embed=embed)
+     else:
+        await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
 
-    
+@bot.tree.command(name="promote", description="Promote an user.")
+ async def promote(interaction: discord.Interaction, User: str, Current_Rank: str, New_Rank: str, Reason: str):
+     if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+        return
+         
+    channel = await get_channel_by_name(interaction.guild, PROMOTIONS_CHANNEL)
+
+    if channel = await get_channel_by_name(interaction.guild, PROMOTIONS_CHANNEL):
+        embed = discord.Embed(
+            title="Infraction",
+            description=f'User getting promoted: {User} \n Current Rank: {Current_Rank} New Rank: {New_Rank} \n Reason: {Reason}',
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        
+        embed.set_footer(text=f"Promoted by {interaction.user.name}")
+        content = ""
+        await channel.send(content=content, embed=embed)
+        
+     else:
+        await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
+
+
+
 #Announce command.
 @bot.tree.command(name="announce", description="Send an announcement to the announcements channel")
 async def announce(interaction: discord.Interaction, message: str, ping_everyone: bool = False):
