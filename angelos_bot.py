@@ -104,7 +104,7 @@ async def on_command_error(ctx, error):
         await ctx.send("An error occurred while processing your command.")
 
 def main():
-    bot.run('YOUR_TOKEN_HERE')
+    bot.run('***')
 
 if __name__ == "__main__":
     main()
