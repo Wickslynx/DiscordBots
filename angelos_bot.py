@@ -77,7 +77,7 @@ async def on_member_remove(member):
 
 #Request command.
 @bot.tree.command(name="request", description="Request more staff to the server")
-@commands.has_role("Staff-team")
+#@commands.has_role("Staff-team")
 async def request(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
@@ -99,7 +99,7 @@ async def request(interaction: discord.Interaction):
 
 #Infract command. Takes in User, punishment and reason.
 @bot.tree.command(name="infract", description="Infract an user.")
-@commands.has_role("Internal Affairs Team")
+#@commands.has_role("Internal Affairs Team")
 async def infract(interaction: discord.Interaction, User: str, punishment: str, Reason: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
@@ -121,7 +121,7 @@ async def infract(interaction: discord.Interaction, User: str, punishment: str, 
 
 #Promote command.
 @bot.tree.command(name="promote", description="Promote an user.")
-@commands.has_role("Internal Affairs Team")
+#@commands.has_role("Internal Affairs Team")
 async def promote(interaction: discord.Interaction, User: str, Current_Rank: str, New_Rank: str, Reason: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
@@ -143,7 +143,7 @@ async def promote(interaction: discord.Interaction, User: str, Current_Rank: str
 
 # Announce command.
 @bot.tree.command(name="announce", description="Send an announcement to the announcements channel")
-@commands.has_role("Executive Ownership team", "Bot developer")
+#@commands.has_role("Executive Ownership team", "Bot developer")
 async def announce(interaction: discord.Interaction, message: str, ping_everyone: bool = False):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
