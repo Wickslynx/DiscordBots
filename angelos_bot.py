@@ -12,9 +12,11 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 WELCOME_CHANNEL = 'general'
 ANNOUNCEMENT_CHANNEL = 'announcements'
 
+#Helper function.
 async def get_channel_by_name(guild, channel_name):
     return discord.utils.get(guild.text_channels, name=channel_name)
 
+#Bot setup.
 @bot.event
 async def on_ready():
 
@@ -32,6 +34,7 @@ async def on_ready():
     except Exception as e:
         print(f"Failed to sync commands: {e}")
 
+#When a member joins send a message.
 @bot.event
 async def on_member_join(member):
     channel = await get_channel_by_name(member.guild, WELCOME_CHANNEL)
@@ -46,6 +49,7 @@ async def on_member_join(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
+#When a member leaves, send a message.
 @bot.event
 async def on_member_remove(member):
     """Handler for member leaves"""
@@ -61,6 +65,7 @@ async def on_member_remove(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
+#Announce command.
 @bot.tree.command(name="announce", description="Send an announcement to the announcements channel")
 async def announce(interaction: discord.Interaction, message: str, ping_everyone: bool = False):
     if not interaction.user.guild_permissions.manage_messages:
@@ -83,9 +88,9 @@ async def announce(interaction: discord.Interaction, message: str, ping_everyone
     else:
         await interaction.response.send_message("Announcements channel not found!", ephemeral=True)
 
+#Error handler.
 @bot.event
 async def on_command_error(ctx, error):
-    """Global error handler"""
     if isinstance(error, commands.errors.MissingPermissions):
         await ctx.send("You don't have permission to use this command!")
     elif isinstance(error, commands.errors.CommandNotFound):
