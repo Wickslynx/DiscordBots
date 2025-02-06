@@ -87,12 +87,12 @@ async def request(interaction: discord.Interaction):
     if channel:
         embed = discord.Embed(
             title="Staff request",
-            description="@ There are low staff in the server!",
+            description="There are low staff in the server, please join!",
             color=discord.Color.blue(),
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Requested by {interaction.user.name}")
-        content = "@here"
+        content = "@Staff-team"
         await channel.send(content=content, embed=embed)
         await interaction.response.send_message("Staff request sent!", ephemeral=True)
     else:
