@@ -100,7 +100,7 @@ async def request(interaction: discord.Interaction):
 #Infract command. Takes in User, punishment and reason.
 @bot.tree.command(name="infract", description="Infract an user.")
 #@commands.has_role("Internal Affairs Team")
-async def infract(interaction: discord.Interaction, User: str, punishment: str, Reason: str):
+async def infract(interaction: discord.Interaction, User: str, punishment: str, reason: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
@@ -109,7 +109,7 @@ async def infract(interaction: discord.Interaction, User: str, punishment: str, 
     if channel:
         embed = discord.Embed(
             title="Infraction",
-            description=f'User getting infracted: {User} \n Punishment: {punishment} \n Reason: {Reason}',
+            description=f'User getting infracted: {User} \n Punishment: {punishment} \n Reason: {reason}',
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
@@ -122,7 +122,7 @@ async def infract(interaction: discord.Interaction, User: str, punishment: str, 
 #Promote command.
 @bot.tree.command(name="promote", description="Promote an user.")
 #@commands.has_role("Internal Affairs Team")
-async def promote(interaction: discord.Interaction, User: str, Current_Rank: str, New_Rank: str, Reason: str):
+async def promote(interaction: discord.Interaction, user: str, current_rank: str, new_rank: str, reason: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
@@ -131,7 +131,7 @@ async def promote(interaction: discord.Interaction, User: str, Current_Rank: str
     if channel:
         embed = discord.Embed(
             title="Promotion",
-            description=f'User getting promoted: {User} \n Current Rank: {Current_Rank} \n New Rank: {New_Rank} \n Reason: {Reason}',
+            description=f'User getting promoted: {user} \n Current Rank: {current_rank} \n New Rank: {new_rank} \n Reason: {reason}',
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
