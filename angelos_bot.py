@@ -174,8 +174,9 @@ async def on_command_error(ctx, error):
         await ctx.send("Command not found!")
     else:
         await ctx.send("An error occurred while processing your command.")
+token =
 
 def main():
-    bot.run('***')  
+    bot.run(token)  
 if __name__ == "__main__":
     main()
