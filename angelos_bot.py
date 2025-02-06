@@ -16,8 +16,13 @@ class Bot(commands.Bot):
         )
     
     async def setup_hook(self):
-        await self.tree.sync()
-        print("Commands synced!")
+        for guild in self.guilds:
+            try:
+                await self.tree.sync(guild=guild)
+                print(f"Synced commands for guild {guild.name}")
+            except Exception as e:
+                print(f"Failed to sync commands for guild {guild.name}: {e}")
+
 
 # Create bot instance.
 bot = Bot()
