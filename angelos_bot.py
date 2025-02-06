@@ -2,12 +2,25 @@ import discord
 from discord.ext import commands
 from datetime import datetime
 
+# Bot config.
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='/', intents=intents)
+class Bot(commands.Bot):
+    def __init__(self):
+        super().__init__(
+            command_prefix='/',
+            intents=intents,
+            application_id='1336770228134088846'  
+        )
+    
+    async def setup_hook(self):
+        await self.tree.sync()
+        print("Commands synced!")
 
+# Create bot instance.
+bot = Bot()
 
 WELCOME_CHANNEL = 'general'
 ANNOUNCEMENT_CHANNEL = 'announcements'
@@ -19,7 +32,6 @@ async def get_channel_by_name(guild, channel_name):
 #Bot setup.
 @bot.event
 async def on_ready():
-
     print(f'Bot logged in as {bot.user}')
     
     await bot.change_presence(
@@ -28,11 +40,6 @@ async def on_ready():
             name="over the server"
         )
     )
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} command(s)")
-    except Exception as e:
-        print(f"Failed to sync commands: {e}")
 
 #When a member joins send a message.
 @bot.event
@@ -52,7 +59,6 @@ async def on_member_join(member):
 #When a member leaves, send a message.
 @bot.event
 async def on_member_remove(member):
-    """Handler for member leaves"""
     channel = await get_channel_by_name(member.guild, WELCOME_CHANNEL)
     if channel:
         embed = discord.Embed(
@@ -81,7 +87,6 @@ async def announce(interaction: discord.Interaction, message: str, ping_everyone
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Announced by {interaction.user.name}")
-
         content = "@everyone " if ping_everyone else ""
         await channel.send(content=content, embed=embed)
         await interaction.response.send_message("Announcement sent successfully!", ephemeral=True)
@@ -99,7 +104,7 @@ async def on_command_error(ctx, error):
         await ctx.send("An error occurred while processing your command.")
 
 def main():
-    bot.run('***********************')
+    bot.run('YOUR_TOKEN_HERE')
 
 if __name__ == "__main__":
     main()
