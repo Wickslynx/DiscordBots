@@ -118,6 +118,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Suggested by {interaction.user.name}")
+        content = ""
         sent_message = await channel.send(content=content, embed=embed)
         await sent_message.add_reaction('✅')  # Upvote
         await sent_message.add_reaction('❌')  # Downvote
