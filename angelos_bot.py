@@ -24,6 +24,7 @@ bot = Bot()
 
 WELCOME_CHANNEL = 'general'
 ANNOUNCEMENT_CHANNEL = 'announcements'
+REQUEST_CHANNEL = 'staff-requests'
 
 #Helper function.
 async def get_channel_by_name(guild, channel_name):
@@ -71,6 +72,29 @@ async def on_member_remove(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
+@bot.tree.command(name="request", destription="Request more staff to the server")
+async def request(interaction; discord.Interaction):
+    if not interaction.user.guild_permission.manage.messages:
+        await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
+        return
+    channel = await get_channel_by_name(interaction.guild, REQUEST_CHANNEL)
+
+    if channel = await get_channel_by_name(interaction.guild, REQUEST_CHANNEL):
+        embed = discord.Embed(
+            title="Staff request",
+            description="@ There are low staff in the server!",
+            color=discord.Color.blue(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"Requested by {interaction.user.name}")
+        content = "@here"
+        await channel.send(content=content, embed=embed)
+    else:
+        await interaction.response.send_message("Internal error: Channel not found.")
+    
+
+
+    
 #Announce command.
 @bot.tree.command(name="announce", description="Send an announcement to the announcements channel")
 async def announce(interaction: discord.Interaction, message: str, ping_everyone: bool = False):
@@ -91,7 +115,7 @@ async def announce(interaction: discord.Interaction, message: str, ping_everyone
         await channel.send(content=content, embed=embed)
         await interaction.response.send_message("Announcement sent successfully!", ephemeral=True)
     else:
-        await interaction.response.send_message("Announcements channel not found!", ephemeral=True)
+        await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
 #Error handler.
 @bot.event
