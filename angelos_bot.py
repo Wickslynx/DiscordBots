@@ -96,6 +96,7 @@ async def request(interaction: discord.Interaction):
         content = "@Staff-team"
         await channel.send(content=content, embed=embed)
         await interaction.response.send_message("Staff request sent!", ephemeral=True)
+        
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
@@ -118,6 +119,8 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
         embed.set_footer(text=f"Suggested by {interaction.user.name}")
         await channel.send(content=content, embed=embed)
+        await sent_message.add_reaction('👍')  # Upvote
+        await sent_message.add_reaction('👎')  # Downvote
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
