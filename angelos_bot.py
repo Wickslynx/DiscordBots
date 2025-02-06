@@ -1,34 +1,100 @@
 import discord
 from discord.ext import commands
-from discord_slash import SlashCommand, SlashContext
+from datetime import datetime
 
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
-slash = SlashCommand(bot, sync_commands=True)
+
+
+WELCOME_CHANNEL = 'general'
+ANNOUNCEMENT_CHANNEL = 'announcements'
+
+async def get_channel_by_name(guild, channel_name):
+    return discord.utils.get(guild.text_channels, name=channel_name)
 
 @bot.event
 async def on_ready():
-    print(f'We have logged in as {bot.user}')
+
+    print(f'Bot logged in as {bot.user}')
+    
+    await bot.change_presence(
+        activity=discord.Activity(
+            type=discord.ActivityType.watching,
+            name="over the server"
+        )
+    )
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} command(s)")
+    except Exception as e:
+        print(f"Failed to sync commands: {e}")
 
 @bot.event
 async def on_member_join(member):
-    channel = discord.utils.get(member.guild.text_channels, name='general')
-    if channel is not None:
-        await channel.send(f'Hello {member.mention}, welcome to the server!')
+    channel = await get_channel_by_name(member.guild, WELCOME_CHANNEL)
+    if channel:
+        embed = discord.Embed(
+            title="New Member!",
+            description=f"Welcome {member.mention} to the server!",
+            color=discord.Color.green(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+        embed.add_field(name="Member Count", value=str(member.guild.member_count))
+        await channel.send(embed=embed)
 
 @bot.event
 async def on_member_remove(member):
-    channel = discord.utils.get(member.guild.text_channels, name='general')
-    if channel is not None:
-        await channel.send(f'{member.mention} didn\'t enjoy his stay :(')
+    """Handler for member leaves"""
+    channel = await get_channel_by_name(member.guild, WELCOME_CHANNEL)
+    if channel:
+        embed = discord.Embed(
+            title="Member Left",
+            description=f"Goodbye {member.mention}! We'll miss you!",
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+        embed.add_field(name="Member Count", value=str(member.guild.member_count))
+        await channel.send(embed=embed)
 
-@slash.slash(name="announce", description="Send an announcement to the announcements channel")
-async def announce(ctx: SlashContext, *, message: str):
-    channel = discord.utils.get(ctx.guild.text_channels, name='announcements')
-    if channel is not None:
-        await channel.send(message)
-    await ctx.send(f"Announcement sent: {message}")
+@bot.tree.command(name="announce", description="Send an announcement to the announcements channel")
+async def announce(interaction: discord.Interaction, message: str, ping_everyone: bool = False):
+    if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+        return
 
-bot.run('****************') 
+    channel = await get_channel_by_name(interaction.guild, ANNOUNCEMENT_CHANNEL)
+    if channel:
+        embed = discord.Embed(
+            title="📢 Announcement",
+            description=message,
+            color=discord.Color.blue(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"Announced by {interaction.user.name}")
+
+        content = "@everyone " if ping_everyone else ""
+        await channel.send(content=content, embed=embed)
+        await interaction.response.send_message("Announcement sent successfully!", ephemeral=True)
+    else:
+        await interaction.response.send_message("Announcements channel not found!", ephemeral=True)
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Global error handler"""
+    if isinstance(error, commands.errors.MissingPermissions):
+        await ctx.send("You don't have permission to use this command!")
+    elif isinstance(error, commands.errors.CommandNotFound):
+        await ctx.send("Command not found!")
+    else:
+        await ctx.send("An error occurred while processing your command.")
+
+def main():
+    bot.run('***********************')
+
+if __name__ == "__main__":
+    main()
