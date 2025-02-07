@@ -143,7 +143,7 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
     if channel:
         embed = discord.Embed(
             title="Infraction",
-            description=f'The high ranking team has decided to infract you! \n\n User getting infracted: {user.mention} \n\n Punishment: {punishment} \n\n Reason: {reason}',
+            description=f'The high ranking team has decided to infract you! \n\n **User getting infracted**: {user.mention} \n\n **Punishment**: {punishment} \n\n **Reason**: {reason}',
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
@@ -164,7 +164,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
     if channel:
         embed = discord.Embed(
             title="Promotion!",
-            description=f'The High ranking team has decied to grant you an promotion! \n\n User getting promoted: {user.mention} \n\n New Rank: {new_rank} \n\n Reason: {reason}',
+            description=f'The High ranking team has decied to grant you an promotion! \n\n **User getting promoted**: {user.mention} \n\n **New Rank**: {new_rank} \n\n **Reason**: {reason}',
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
