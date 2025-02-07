@@ -182,7 +182,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
 @bot.tree.command(name="retire", description="Retire  yourself, THIS IS A ONE WAY ACTION, THERE IS NO GOING BACK.")
-async def promote(interaction: discord.Interaction, user: discord.Member, last_words: str):
+async def retire(interaction: discord.Interaction, user: discord.Member, last_words: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
