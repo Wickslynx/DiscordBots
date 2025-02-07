@@ -134,7 +134,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
 
 # Infract command. Takes in user, punishment, and reason.
 @bot.tree.command(name="infract", description="Infract a user.")
-async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str):
+async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str, notes: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
@@ -143,7 +143,7 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
     if channel:
         embed = discord.Embed(
             title="Infraction",
-            description=f'The high ranking team has decided to infract you! \n\n **User getting infracted**: {user.mention} \n\n **Punishment**: {punishment} \n\n **Reason**: {reason}',
+            description=f'The high ranking team has decided to infract you! \n\n **User getting infracted**: {user.mention} \n\n **Punishment**: {punishment} \n\n **Reason**: {reason} \n\n **Notes**: {notes} ',
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
@@ -163,7 +163,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
     channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
-            title="Promotion!",
+            title="Staff Promotion!",
             description=f'The High ranking team has decied to grant you an promotion! \n\n **User getting promoted**: {user.mention} \n\n **New Rank**: {new_rank} \n\n **Reason**: {reason}',
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
