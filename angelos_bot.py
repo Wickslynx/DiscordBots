@@ -103,7 +103,7 @@ async def request(interaction: discord.Interaction):
 
 @bot.tree.command(name="say", description="Make the bot say a message.")
 async def say(interaction: discord.Interaction, message: str):
-    await interaction.send_message(message)
+    await interaction.response.send_message(message)
     
 
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
