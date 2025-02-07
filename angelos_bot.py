@@ -176,6 +176,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 
     channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
     if channel:
+        await user.add_roles(new_rank)
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Staff Promotion!",
