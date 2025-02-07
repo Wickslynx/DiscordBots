@@ -1,3 +1,5 @@
+# Los Angoles Roleplay bot.
+
 import discord
 from discord.ext import commands
 from datetime import datetime
@@ -30,6 +32,7 @@ REQUEST_CHANNEL_ID = 1337111618517073972
 INFRACTIONS_CHANNEL_ID = 1307758472179355718
 PROMOTIONS_CHANNEL_ID = 1310272690434736158 
 SUGGEST_CHANNEL_ID = 1223930187868016670
+RETIREMENTS_CHANNEL_ID = 
 
 # Helper function.
 async def get_channel_by_id(guild, channel_id):
@@ -102,8 +105,10 @@ async def request(interaction: discord.Interaction):
 
 
 @bot.tree.command(name="say", description="Make the bot say a message.")
-async def say(interaction: discord.Interaction, message: str):
-    await interaction.response.send_message(message)
+async def say(interaction: discord.Interaction, message: str)
+    await interaction.response.defer(ephemeral=True)
+    
+    await interaction.channel.send(message)
     
 
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
@@ -173,6 +178,33 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         embed.set_footer(text=f"Promoted by {interaction.user.name}")
         await channel.send(embed=embed)
         await interaction.response.send_message("Promotion logged!", ephemeral=True)
+    else:
+        await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
+
+@bot.tree.command(name="retire", description="Retire  yourself, THIS IS A ONE WAY ACTION, THERE IS NO GOING BACK.")
+async def promote(interaction: discord.Interaction, user: discord.Member, last_words: str):
+    if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+        return
+
+    channel = await get_channel_by_id(interaction.guild, RETIREMENTS_CHANNEL_ID)
+    if channel:
+        await channel.send(f"{user.mention}")
+        embed = discord.Embed(
+            title="Retirment :(",
+            description=f'{user.mention} has decided to retire! \n The Los Angoles staff team wishes you best of luck! \n Last words: {last_words} \n Goodbye!',
+            color=discord.Color.pink(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"Best of wishes from the ownership and development team!")
+        sent_message = await channel.send(embed=embed)
+        await sent_message.add_reaction('❤️')
+        await sent_message.add_reaction('🫡')
+        await sent_message.add_reaction('😭')
+        
+        
+        
+        await interaction.response.send_message("Retirment sent, your roles will be removed in the near future.", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
