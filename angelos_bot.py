@@ -141,6 +141,7 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
 
     channel = await get_channel_by_id(interaction.guild, INFRACTIONS_CHANNEL_ID)
     if channel:
+        await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Infraction",
             description=f'The high ranking team has decided to infract you! \n\n **User getting infracted**:\n {user.mention} \n\n **Punishment**:\n {punishment} \n\n **Reason**:\n {reason} \n\n **Notes**: {notes} ',
@@ -162,6 +163,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 
     channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
     if channel:
+        await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Staff Promotion!",
             description=f'The High ranking team has decied to grant you an promotion! \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n @{new_rank} \n\n **Reason**:\n {reason}',
