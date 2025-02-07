@@ -192,8 +192,8 @@ async def retire(interaction: discord.Interaction, user: discord.Member, last_wo
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Retirment :(",
-            description=f'{user.mention} has decided to retire! \n The Los Angoles staff team wishes you best of luck! \n Last words: {last_words} \n Goodbye!',
-            color=discord.Color.pink(),
+            description=f'{user.mention} has decided to retire! \n The Los Angoles staff team wishes you best of luck! \n Last words: \n {last_words} \n Goodbye!',
+            color=discord.Color.blue(),
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Best of wishes from the ownership and development team!")
@@ -204,7 +204,7 @@ async def retire(interaction: discord.Interaction, user: discord.Member, last_wo
         
         
         
-        await interaction.response.send_message("Retirment sent, your roles will be removed in the near future.", ephemeral=True)
+        await interaction.response.send_message("Retirement sent, your roles will be removed in the near future.", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
