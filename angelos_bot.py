@@ -32,7 +32,10 @@ REQUEST_CHANNEL_ID = 1337111618517073972
 INFRACTIONS_CHANNEL_ID = 1307758472179355718
 PROMOTIONS_CHANNEL_ID = 1310272690434736158 
 SUGGEST_CHANNEL_ID = 1223930187868016670
-RETIREMENTS_CHANNEL_ID = 
+RETIREMENTS_CHANNEL_ID = 1337106483862831186
+INTERNAL_AFFAIRS_ID = 1308094201262637056
+OT_ID = 1223922259727483003
+STAFF_TEAM_ID = 1223920619993956372
 
 # Helper function.
 async def get_channel_by_id(guild, channel_id):
@@ -106,10 +109,14 @@ async def request(interaction: discord.Interaction):
 
 @bot.tree.command(name="say", description="Make the bot say a message.")
 async def say(interaction: discord.Interaction, message: str)
-    await interaction.response.defer(ephemeral=True)
-    
-    await interaction.channel.send(message)
-    
+
+    role = discord.utils.get(ctx.guild.roles, id=OT_ID)
+    if role in ctx.author.roles:
+        await interaction.response.defer(ephemeral=True)
+        await interaction.channel.send(message)
+    else:
+        await ctx.send(f'Sorry {ctx.author.mention}, you do not have the required role to run this command.')
+        
 
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
@@ -144,6 +151,11 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
 
+    role = discord.utils.get(ctx.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if not role in ctx.author.roles:
+        await ctx.send(f'Sorry {ctx.author.mention}, you do not have the required role to run this command.')
+        return
+
     channel = await get_channel_by_id(interaction.guild, INFRACTIONS_CHANNEL_ID)
     if channel:
         await channel.send(f"{user.mention}")
@@ -166,6 +178,11 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
 
+    role = discord.utils.get(ctx.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if not role in ctx.author.roles:
+        await ctx.send(f'Sorry {ctx.author.mention}, you do not have the required role to run this command.')
+        return
+
     channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
     if channel:
         await channel.send(f"{user.mention}")
@@ -185,6 +202,11 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 async def retire(interaction: discord.Interaction, user: discord.Member, last_words: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+        return
+
+    role = discord.utils.get(ctx.guild.roles, id=STAFF_TEAM_ID)
+    if not role in ctx.author.roles:
+        await ctx.send(f'Sorry {ctx.author.mention}, you do not have the required role to run this command.')
         return
 
     channel = await get_channel_by_id(interaction.guild, RETIREMENTS_CHANNEL_ID)
