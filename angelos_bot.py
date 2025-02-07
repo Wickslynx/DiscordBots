@@ -203,7 +203,7 @@ async def retire(interaction: discord.Interaction, user: discord.Member, last_wo
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Retirement :(",
-            description=f'{user.mention} has decided to retire! \n The Los Angoles staff team wishes you best of luck! \n Last words: \n {last_words} \n Goodbye!',
+            description=f'{user.mention} has decided to **retire!** \n  The Los Angoles **staff team** wishes you best of luck! \n\n  **Last words:** \n {last_words} \n \n  Goodbye!',
             color=discord.Color.blue(),
             timestamp=datetime.utcnow()
         )
