@@ -24,7 +24,8 @@ class Bot(commands.Bot):
 bot = Bot()
 
 # Channel IDs.
-WELCOME_CHANNEL_ID = 1223929486429524078 
+WELCOME_CHANNEL_ID = 1337432747094048890
+LEAVES_CHANNEL_ID = 1337432777066549288
 ANNOUNCEMENT_CHANNEL_ID = 1223929286528991253  
 REQUEST_CHANNEL_ID = 1337111618517073972  
 INFRACTIONS_CHANNEL_ID = 1307758472179355718
@@ -69,7 +70,7 @@ async def on_member_join(member):
 # When a member leaves, send a message.
 @bot.event
 async def on_member_remove(member):
-    channel = await get_channel_by_id(member.guild, WELCOME_CHANNEL_ID)
+    channel = await get_channel_by_id(member.guild, LEAVES_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
             title="Member Left",
