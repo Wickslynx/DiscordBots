@@ -188,7 +188,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
 @bot.tree.command(name="retire", description="Retire yourself, THIS IS A ONE WAY ACTION, THERE IS NO GOING BACK.")
-async def retire(interaction: discord.Interaction, user: discord.Member, last_words: str):
+async def retire(interaction: discord.Interaction, last_words: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
@@ -200,10 +200,10 @@ async def retire(interaction: discord.Interaction, user: discord.Member, last_wo
 
     channel = await get_channel_by_id(interaction.guild, RETIREMENTS_CHANNEL_ID)
     if channel:
-        await channel.send(f"{user.mention}")
+        await channel.send(f"{interaction.author.mention}")
         embed = discord.Embed(
             title="Retirement :(",
-            description=f'{user.mention} has decided to **retire!** \n  The Los Angoles **staff team** wishes you best of luck! \n\n  **Last words:** \n {last_words} \n \n  Goodbye!',
+            description=f'{interaction.author.mention} has decided to **retire!** \n  The Los Angoles **staff team** wishes you best of luck! \n\n  **Last words:** \n {last_words} \n \n  Goodbye!',
             color=discord.Color.blue(),
             timestamp=datetime.utcnow()
         )
