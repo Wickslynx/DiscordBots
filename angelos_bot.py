@@ -1,5 +1,3 @@
-# Los Angoles Roleplay bot.
-
 import discord
 from discord.ext import commands
 from datetime import datetime
@@ -106,17 +104,13 @@ async def request(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
-
 @bot.tree.command(name="say", description="Make the bot say a message.")
-async def say(interaction: discord.Interaction, message: str)
-
-    role = discord.utils.get(ctx.guild.roles, id=OT_ID)
-    if role in ctx.author.roles:
-        await interaction.response.defer(ephemeral=True)
-        await interaction.channel.send(message)
+async def say(interaction: discord.Interaction, message: str):
+    role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+    if role in interaction.user.roles:
+        await interaction.response.send_message(message, ephemeral=False)
     else:
-        await ctx.send(f'Sorry {ctx.author.mention}, you do not have the required role to run this command.')
-        
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
 
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
@@ -141,19 +135,15 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
-
-
-
-# Infract command. Takes in user, punishment, and reason.
 @bot.tree.command(name="infract", description="Infract a user.")
 async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str, notes: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
 
-    role = discord.utils.get(ctx.guild.roles, id=INTERNAL_AFFAIRS_ID)
-    if not role in ctx.author.roles:
-        await ctx.send(f'Sorry {ctx.author.mention}, you do not have the required role to run this command.')
+    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
         return
 
     channel = await get_channel_by_id(interaction.guild, INFRACTIONS_CHANNEL_ID)
@@ -171,16 +161,15 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-# Promote command.
 @bot.tree.command(name="promote", description="Promote a user.")
 async def promote(interaction: discord.Interaction, user: discord.Member, new_rank: discord.Role, reason: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
 
-    role = discord.utils.get(ctx.guild.roles, id=INTERNAL_AFFAIRS_ID)
-    if not role in ctx.author.roles:
-        await ctx.send(f'Sorry {ctx.author.mention}, you do not have the required role to run this command.')
+    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
         return
 
     channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
@@ -188,7 +177,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Staff Promotion!",
-            description=f'The High ranking team has decied to grant you an promotion! \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n {new_rank.mention} \n\n **Reason**:\n {reason}',
+            description=f'The High ranking team has decided to grant you a promotion! \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n {new_rank.mention} \n\n **Reason**:\n {reason}',
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
@@ -198,22 +187,22 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-@bot.tree.command(name="retire", description="Retire  yourself, THIS IS A ONE WAY ACTION, THERE IS NO GOING BACK.")
+@bot.tree.command(name="retire", description="Retire yourself, THIS IS A ONE WAY ACTION, THERE IS NO GOING BACK.")
 async def retire(interaction: discord.Interaction, user: discord.Member, last_words: str):
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
         return
 
-    role = discord.utils.get(ctx.guild.roles, id=STAFF_TEAM_ID)
-    if not role in ctx.author.roles:
-        await ctx.send(f'Sorry {ctx.author.mention}, you do not have the required role to run this command.')
+    role = discord.utils.get(interaction.guild.roles, id=STAFF_TEAM_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
         return
 
     channel = await get_channel_by_id(interaction.guild, RETIREMENTS_CHANNEL_ID)
     if channel:
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
-            title="Retirment :(",
+            title="Retirement :(",
             description=f'{user.mention} has decided to retire! \n The Los Angoles staff team wishes you best of luck! \n Last words: \n {last_words} \n Goodbye!',
             color=discord.Color.blue(),
             timestamp=datetime.utcnow()
@@ -224,13 +213,11 @@ async def retire(interaction: discord.Interaction, user: discord.Member, last_wo
         await sent_message.add_reaction('🫡')
         await sent_message.add_reaction('😭')
         
-        
-        
         await interaction.response.send_message("Retirement sent, your roles will be removed in the near future.", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-# Error handler.
+# Error handler-
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.MissingPermissions):
@@ -239,6 +226,11 @@ async def on_command_error(ctx, error):
         await ctx.send("Command not found!")
     else:
         await ctx.send("An error occurred while processing your command.")
+
+# Global error handler-
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+    await interaction.response.send_message("An error occurred while processing your command.", ephemeral=True)
 
 token = ""
 
