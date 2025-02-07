@@ -110,6 +110,7 @@ async def say(interaction: discord.Interaction, message: str):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
     if role in interaction.user.roles:
         await interaction.channel.send(message)
+        await interaction.response.defer(ephemeral=True)
     else:
         await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
 
