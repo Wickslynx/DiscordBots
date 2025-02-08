@@ -275,7 +275,11 @@ async def deny_button_callback(interaction: discord.Interaction):
 
 @bot.tree.command(name="loa_request", description="Submit a Leave of Absence request")
 async def loa_request(interaction: discord.Interaction, start_date: str, end_date: str, reason: str):
-    
+
+    role = discord.utils.get(interaction.guild.roles, id=STAFF_TEAM_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+        return
     
     
     try:
