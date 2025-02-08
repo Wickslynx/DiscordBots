@@ -33,6 +33,7 @@ PROMOTIONS_CHANNEL_ID = 1310272690434736158
 SUGGEST_CHANNEL_ID = 1223930187868016670
 RETIREMENTS_CHANNEL_ID = 1337106483862831186
 INTERNAL_AFFAIRS_ID = 1308094201262637056
+LOA_CHANNEL_ID = 1337809778231083078
 OT_ID = 1223922259727483003
 STAFF_TEAM_ID = 1223920619993956372
 
@@ -160,7 +161,7 @@ class LOAButtons(discord.ui.View):
         await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
 
     
-    channel = await get_channel_by_id(interaction.guild, ANNOUNCEMENT_CHANNEL_ID)
+    channel = await get_channel_by_id(interaction.guild, LOA_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
             title="Leave of Absence Request",
