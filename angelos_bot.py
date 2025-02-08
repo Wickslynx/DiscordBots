@@ -32,10 +32,12 @@ INFRACTIONS_CHANNEL_ID = 1307758472179355718
 PROMOTIONS_CHANNEL_ID = 1310272690434736158 
 SUGGEST_CHANNEL_ID = 1223930187868016670
 RETIREMENTS_CHANNEL_ID = 1337106483862831186
+TRAINING_CHANNEL_ID =1312742612658163735
 INTERNAL_AFFAIRS_ID = 1308094201262637056
 LOA_CHANNEL_ID = 1308084741009838241
 OT_ID = 1223922259727483003
 STAFF_TEAM_ID = 1223920619993956372
+AWAITING_TRAINING_ID = 1309972134604308500
 
 # Helper function.
 async def get_channel_by_id(guild, channel_id):
@@ -102,7 +104,30 @@ async def request(interaction: discord.Interaction):
         
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
-
+        
+@bot.tree.command(name="training_request", description="Request a trainer to train you.")
+async def training_request(interaction: discord.Interaction):
+    role = discord.utils.get(interaction.guild.roles, id=AWAITING_TRAINING_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+        return
+    
+    channel = await get_channel_by_id(interaction.guild, TRAINING_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(
+            title="Training request!",
+            description=f"{interaction.user.mention} has requested training! If you are available please start an training session.",
+            color=discord.Color.blue(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"")
+        content = "@Staff Training Approval"
+        await channel.send(content=content, embed=embed)
+        await interaction.response.send_message("Training request sent!", ephemeral=True)
+        
+    else:
+        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
+        
 @bot.tree.command(name="say", description="Make the bot say a message.")
 async def say(interaction: discord.Interaction, message: str):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
