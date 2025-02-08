@@ -190,7 +190,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         embed.set_footer(text=f"Promoted by {interaction.user.name}")
         await channel.send(embed=embed)
 
-         try:
+        try:
             await user.add_roles(new_rank)
         except discord.Forbidden:
             await interaction.response.send_message("I don't have permission to add roles to this user!", ephemeral=True)
