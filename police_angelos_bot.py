@@ -24,17 +24,13 @@ class Bot(commands.Bot):
 bot = Bot()
 
 # Channel IDs.
-WELCOME_CHANNEL_ID = 
-LEAVES_CHANNEL_ID = 
-ANNOUNCEMENT_CHANNEL_ID = 
-REQUEST_CHANNEL_ID = 
-INFRACTIONS_CHANNEL_ID =
-PROMOTIONS_CHANNEL_ID = 
-SUGGEST_CHANNEL_ID = 
-RETIREMENTS_CHANNEL_ID =
-INTERNAL_AFFAIRS_ID = 
-OT_ID = 
-STAFF_TEAM_ID = 
+WELCOME_CHANNEL_ID = 1337700023558864928
+LEAVES_CHANNEL_ID = 1337700040709509120
+INFRACTIONS_CHANNEL_ID = 1315026120520892426
+PROMOTIONS_CHANNEL_ID = 1315025682652336149
+SUGGEST_CHANNEL_ID =  1337700297761357835
+INTERNAL_AFFAIRS_ID = 1314367534295945258
+OT_ID = 1312749062247944232
 
 # Helper function.
 async def get_channel_by_id(guild, channel_id):
@@ -168,35 +164,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-@bot.tree.command(name="retire", description="Retire yourself, THIS IS A ONE WAY ACTION, THERE IS NO GOING BACK.")
-async def retire(interaction: discord.Interaction, last_words: str):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
-        return
-
-    role = discord.utils.get(interaction.guild.roles, id=STAFF_TEAM_ID)
-    if role not in interaction.user.roles:
-        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
-        return
-
-    channel = await get_channel_by_id(interaction.guild, RETIREMENTS_CHANNEL_ID)
-    if channel:
-        await channel.send(f"{interaction.user.mention}")
-        embed = discord.Embed(
-            title="Retirement :(",
-            description=f'{interaction.user.mention} has decided to **retire!** \n  The Los Angoles **staff team** wishes you best of luck! \n\n  **Last words:** \n {last_words} \n \n  Goodbye!',
-            color=discord.Color.blue(),
-            timestamp=datetime.utcnow()
-        )
-        embed.set_footer(text=f"Best of wishes from the ownership and development team!")
-        sent_message = await channel.send(embed=embed)
-        await sent_message.add_reaction('❤️')
-        await sent_message.add_reaction('🫡')
-        await sent_message.add_reaction('😭')
-        
-        await interaction.response.send_message("Retirement sent, your roles will be removed in the near future.", ephemeral=True)
-    else:
-        await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
 # Error handler-
 @bot.event
