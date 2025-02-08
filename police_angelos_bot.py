@@ -137,21 +137,36 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
+
 @bot.tree.command(name="promote", description="Promote a user.")
 async def promote(interaction: discord.Interaction, user: discord.Member, new_rank: discord.Role, reason: str):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
-        return
+    try:
 
-    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
-    if role not in interaction.user.roles:
-        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
-        return
+        if not interaction.user.guild_permissions.manage_messages:
+            await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+            return
 
-    channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
-    if channel:
-        await user.add_roles(new_rank)
-        await channel.send(f"{user.mention}")
+        role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+            return
+
+
+        channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
+        if not channel:
+            await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
+            return
+
+        try:
+            await user.add_roles(new_rank)
+        except discord.Forbidden:
+            await interaction.response.send_message("I don't have permission to add roles to this user!", ephemeral=True)
+            return
+        except discord.HTTPException:
+            await interaction.response.send_message("Failed to add the role. Please try again.", ephemeral=True)
+            return
+
+
         embed = discord.Embed(
             title="Staff Promotion!",
             description=f'The High ranking team has decided to grant you a promotion! \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n {new_rank.mention} \n\n **Reason**:\n {reason}',
@@ -159,10 +174,14 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Promoted by {interaction.user.name}")
-        await channel.send(embed=embed)
+        
+
+        await channel.send(f"{user.mention}", embed=embed)
         await interaction.response.send_message("Promotion logged!", ephemeral=True)
-    else:
-        await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
+
+    except Exception as e:
+        print(f"Promotion error: {str(e)}") 
+        await interaction.response.send_message("An error occurred while processing the promotion.", ephemeral=True)
 
 
 # Error handler-
