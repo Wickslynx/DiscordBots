@@ -114,6 +114,102 @@ async def say(interaction: discord.Interaction, message: str):
     else:
         await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
 
+
+#GUI HERE
+class LOAButtons(discord.ui.View):
+    def __init__(self, author_id):
+        super().__init__(timeout=None) 
+        self.author_id = author_id
+        
+    @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa")
+    async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+   
+        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message("You don't have permission to approve LOA requests!", ephemeral=True)
+            return
+            
+
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        embed.add_field(name="Status", value=f"Approved by {interaction.user.mention}", inline=False)
+        
+        
+        for item in self.children:
+            item.disabled = True
+            
+        await interaction.message.edit(embed=embed, view=self)
+        await interaction.response.send_message(f"LOA request approved!", ephemeral=True)
+        
+    @discord.ui.button(label="Deny", style=discord.ButtonStyle.red, custom_id="deny_loa")
+    async def deny_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message("You don't have permission to deny LOA requests!", ephemeral=True)
+            return
+            
+   
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.red()
+        embed.add_field(name="Status", value=f"Denied by {interaction.user.mention}", inline=False)
+        
+        for item in self.children:
+            item.disabled = True
+            
+        await interaction.message.edit(embed=embed, view=self)
+        await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
+
+    
+    channel = await get_channel_by_id(interaction.guild, ANNOUNCEMENT_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(
+            title="Leave of Absence Request",
+            description=f"A staff member has submitted an LOA request.",
+            color=discord.Color.blue(),
+            timestamp=datetime.utcnow()
+        )
+        
+        embed.add_field(
+            name="Staff Member", 
+            value=interaction.user.mention, 
+            inline=False
+        )
+        embed.add_field(
+            name="Start Date", 
+            value=start.strftime("%B %d, %Y"), 
+            inline=True
+        )
+        embed.add_field(
+            name="End Date", 
+            value=end.strftime("%B %d, %Y"), 
+            inline=True
+        )
+        embed.add_field(
+            name="Duration", 
+            value=f"{duration} {'day' if duration == 1 else 'days'}", 
+            inline=True
+        )
+        embed.add_field(
+            name="Reason", 
+            value=reason, 
+            inline=False
+        )
+        
+        embed.set_footer(text=f"Submitted by {interaction.user.name}")
+        
+        view = LOAButtons(interaction.user.id)
+        await channel.send(embed=embed, view=view)
+        
+        await interaction.response.send_message(
+            "Your LOA request has been submitted for approval!", 
+            ephemeral=True
+        )
+    else:
+        await interaction.response.send_message(
+            "Internal error: Channel not found.", 
+            ephemeral=True
+        )
+        
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
     if not interaction.user.guild_permissions.manage_messages:
@@ -233,7 +329,163 @@ async def retire(interaction: discord.Interaction, last_words: str):
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-# Error handler-
+
+
+
+
+
+
+async def approve_button_callback(interaction: discord.Interaction):
+    role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message("You don't have permission to approve LOA requests!", ephemeral=True)
+        return
+        
+    embed = interaction.message.embeds[0]
+    embed.color = discord.Color.green()
+    embed.add_field(name="Status", value=f"Approved by {interaction.user.mention}", inline=False)
+    
+
+    view = discord.ui.View()
+    approve_button = discord.ui.Button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa", disabled=True)
+    deny_button = discord.ui.Button(label="Deny", style=discord.ButtonStyle.red, custom_id="deny_loa", disabled=True)
+    view.add_item(approve_button)
+    view.add_item(deny_button)
+    
+    await interaction.message.edit(embed=embed, view=view)
+    await interaction.response.send_message(f"LOA request approved!", ephemeral=True)
+
+async def deny_button_callback(interaction: discord.Interaction):
+    role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message("You don't have permission to deny LOA requests!", ephemeral=True)
+        return
+        
+    embed = interaction.message.embeds[0]
+    embed.color = discord.Color.red()
+    embed.add_field(name="Status", value=f"Denied by {interaction.user.mention}", inline=False)
+    
+    view = discord.ui.View()
+    approve_button = discord.ui.Button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa", disabled=True)
+    deny_button = discord.ui.Button(label="Deny", style=discord.ButtonStyle.red, custom_id="deny_loa", disabled=True)
+    view.add_item(approve_button)
+    view.add_item(deny_button)
+    
+    await interaction.message.edit(embed=embed, view=view)
+    await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
+
+
+
+
+
+
+
+
+@bot.tree.command(name="loa_request", description="Submit a Leave of Absence request")
+async def loa_request(interaction: discord.Interaction, start_date: str, end_date: str, reason: str):
+    if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
+        return
+    
+    try:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        
+        if end < start:
+            await interaction.response.send_message(
+                "End date must be after start date!", 
+                ephemeral=True
+            )
+            return
+            
+        if start < datetime.now():
+            await interaction.response.send_message(
+                "Start date cannot be in the past!", 
+                ephemeral=True
+            )
+            return
+            
+    except ValueError:
+        await interaction.response.send_message(
+            "Invalid date format! Please use YYYY-MM-DD (e.g., 2024-02-08)", 
+            ephemeral=True
+        )
+        return
+
+    duration = (end - start).days + 1
+    
+    channel = await get_channel_by_id(interaction.guild, ANNOUNCEMENT_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(
+            title="Leave of Absence Request",
+            description=f"A staff member has submitted an LOA request.",
+            color=discord.Color.blue(),
+            timestamp=datetime.utcnow()
+        )
+        
+        embed.add_field(
+            name="Staff Member", 
+            value=interaction.user.mention, 
+            inline=False
+        )
+        embed.add_field(
+            name="Start Date", 
+            value=start.strftime("%B %d, %Y"), 
+            inline=True
+        )
+        embed.add_field(
+            name="End Date", 
+            value=end.strftime("%B %d, %Y"), 
+            inline=True
+        )
+        embed.add_field(
+            name="Duration", 
+            value=f"{duration} {'day' if duration == 1 else 'days'}", 
+            inline=True
+        )
+        embed.add_field(
+            name="Reason", 
+            value=reason, 
+            inline=False
+        )
+        
+        embed.set_footer(text=f"Submitted by {interaction.user.name}")
+        
+        # Create view with buttons
+        view = discord.ui.View()
+        approve_button = discord.ui.Button(
+            label="Approve", 
+            style=discord.ButtonStyle.green, 
+            custom_id="approve_loa"
+        )
+        deny_button = discord.ui.Button(
+            label="Deny", 
+            style=discord.ButtonStyle.red, 
+            custom_id="deny_loa"
+        )
+        
+      
+        approve_button.callback = approve_button_callback
+        deny_button.callback = deny_button_callback
+        
+        view.add_item(approve_button)
+        view.add_item(deny_button)
+        
+        await channel.send(embed=embed, view=view)
+        await interaction.response.send_message(
+            "Your LOA request has been submitted for approval!", 
+            ephemeral=True
+        )
+    else:
+        await interaction.response.send_message(
+            "Internal error: Channel not found.", 
+            ephemeral=True
+        )
+
+
+
+
+# Error handler.
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.MissingPermissions):
