@@ -98,7 +98,7 @@ async def request(interaction: discord.Interaction):
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"Requested by {interaction.user.name}")
-        content = "@Staff-team"
+        content = "@here"
         await channel.send(content=content, embed=embed)
         await interaction.response.send_message("Staff request sent!", ephemeral=True)
         
@@ -145,8 +145,10 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
 
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
-        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
-        return
+        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+            return
 
     channel = await get_channel_by_id(interaction.guild, INFRACTIONS_CHANNEL_ID)
     if channel:
@@ -171,8 +173,10 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
-        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
-        return
+        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+            return
 
     channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
     if channel:
