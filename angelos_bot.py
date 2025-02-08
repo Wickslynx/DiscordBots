@@ -121,7 +121,7 @@ async def training_request(interaction: discord.Interaction):
             timestamp=datetime.utcnow()
         )
         embed.set_footer(text=f"")
-        content = "@Staff Training Approval"
+        content = "<@&1308148725331394642>"
         await channel.send(content=content, embed=embed)
         await interaction.response.send_message("Training request sent!", ephemeral=True)
         
