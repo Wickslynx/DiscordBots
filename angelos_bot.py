@@ -86,9 +86,6 @@ async def on_member_remove(member):
 #Request command.
 @bot.tree.command(name="request", description="Request more staff to the server")
 async def request(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
-        return
     
     channel = await get_channel_by_id(interaction.guild, REQUEST_CHANNEL_ID)
     if channel:
@@ -119,9 +116,6 @@ async def say(interaction: discord.Interaction, message: str):
         
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have permissions to use this command!", ephemeral=True)
-        return
     
     channel = await get_channel_by_id(interaction.guild, SUGGEST_CHANNEL_ID)
     if channel:
@@ -142,9 +136,6 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
 
 @bot.tree.command(name="infract", description="Infract a user.")
 async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str, notes: str):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
-        return
 
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
@@ -170,9 +161,6 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
 
 @bot.tree.command(name="promote", description="Promote a user.")
 async def promote(interaction: discord.Interaction, user: discord.Member, new_rank: discord.Role, reason: str):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
-        return
 
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
@@ -208,9 +196,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 
 @bot.tree.command(name="retire", description="Retire yourself, THIS IS A ONE WAY ACTION, THERE IS NO GOING BACK.")
 async def retire(interaction: discord.Interaction, last_words: str):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
-        return
 
     role = discord.utils.get(interaction.guild.roles, id=STAFF_TEAM_ID)
     if role not in interaction.user.roles:
@@ -290,9 +275,8 @@ async def deny_button_callback(interaction: discord.Interaction):
 
 @bot.tree.command(name="loa_request", description="Submit a Leave of Absence request")
 async def loa_request(interaction: discord.Interaction, start_date: str, end_date: str, reason: str):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have permission to use this command!", ephemeral=True)
-        return
+    
+    
     
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d")
