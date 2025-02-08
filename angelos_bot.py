@@ -176,7 +176,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 
     channel = await get_channel_by_id(interaction.guild, PROMOTIONS_CHANNEL_ID)
     if channel:
-        await user.add_roles(new_rank)
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Staff Promotion!",
@@ -186,6 +185,16 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         )
         embed.set_footer(text=f"Promoted by {interaction.user.name}")
         await channel.send(embed=embed)
+
+         try:
+            await user.add_roles(new_rank)
+        except discord.Forbidden:
+            await interaction.response.send_message("I don't have permission to add roles to this user!", ephemeral=True)
+            return
+        except discord.HTTPException:
+            await interaction.response.send_message("Failed to add the role. Please try again.", ephemeral=True)
+            return
+
         await interaction.response.send_message("Promotion logged!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
