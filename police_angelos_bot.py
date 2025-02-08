@@ -157,6 +157,15 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
             await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
             return
 
+
+        embed = discord.Embed(
+            title="Police Promotion!",
+            description=f'The High ranking team has decided to grant you a promotion! \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n {new_rank.mention} \n\n **Reason**:\n {reason}',
+            color=discord.Color.green(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"Promoted by {interaction.user.name}")
+
         try:
             await user.add_roles(new_rank)
         except discord.Forbidden:
@@ -166,14 +175,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
             await interaction.response.send_message("Failed to add the role. Please try again.", ephemeral=True)
             return
 
-
-        embed = discord.Embed(
-            title="Police Promotion!",
-            description=f'The High ranking team has decided to grant you a promotion! \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n {new_rank.mention} \n\n **Reason**:\n {reason}',
-            color=discord.Color.green(),
-            timestamp=datetime.utcnow()
-        )
-        embed.set_footer(text=f"Promoted by {interaction.user.name}")
         
 
         await channel.send(f"{user.mention}", embed=embed)
