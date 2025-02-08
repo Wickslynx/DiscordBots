@@ -168,7 +168,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 
 
         embed = discord.Embed(
-            title="Staff Promotion!",
+            title="Police Promotion!",
             description=f'The High ranking team has decided to grant you a promotion! \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n {new_rank.mention} \n\n **Reason**:\n {reason}',
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
