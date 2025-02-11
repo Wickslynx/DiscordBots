@@ -1,7 +1,11 @@
 import discord
 from discord.ext import commands
 from datetime import datetime
+import json
+from discord.ext import tasks
+from datetime import datetime, time
 
+        
 # Bot config.
 intents = discord.Intents.default()
 intents.members = True
@@ -16,9 +20,44 @@ class Bot(commands.Bot):
         )
     
     async def setup_hook(self):
-        # Global command sync
         await self.tree.sync()
         print("Commands synced globally")
+
+    @tasks.loop(time=time(0, 0))  # (00:00)
+    async def daily_check(self):
+         loa_data = load_loa_data()
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        for user_id, info in list(loa_data.items()):
+           
+            if info['start_date'] == today:
+                try:
+                    user = await self.fetch_user(int(user_id))
+                    await user.send(f"Your LOA period has started today and will end on {info['end_date']}")
+                except:
+                    print(f"Could not send start notification to user {user_id}")
+
+    
+            if info['end_date'] == today:
+                try:
+                    user = await self.fetch_user(int(user_id))
+                    await user.send("Your LOA period has ended today.")
+
+                    guild = self.get_guild(1223694900084867247)  
+                    if guild:
+                        member = guild.get_member(int(user_id))
+                        if member:
+                            await member.remove_roles(guild.get_role(LOA_ID))
+                    del loa_data[user_id]
+                    save_loa_data(loa_data)
+                except:
+                    print(f"Could not process end of LOA for user {user_id}")
+        
+        
+        
+    @daily_check.before_loop
+    async def before_daily_check(self):
+        await self.wait_until_ready()
 
 # Create bot instance.
 bot = Bot()
@@ -38,10 +77,24 @@ LOA_CHANNEL_ID = 1308084741009838241
 OT_ID = 1223922259727483003
 STAFF_TEAM_ID = 1223920619993956372
 AWAITING_TRAINING_ID = 1309972134604308500
+LOA_ID = 1322405982462017546
 
-# Helper function.
+# Helper functions 
 async def get_channel_by_id(guild, channel_id):
     return guild.get_channel(channel_id)
+
+def save_loa_data(data):
+    with open('storage/LOA.json', 'w') as file:
+        json.dump(data, file, indent=4)
+
+def load_loa_data():
+    try:
+        with open('storage/LOA.json', 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {}
+
+
 
 # Bot setup.
 @bot.event
@@ -271,6 +324,15 @@ async def approve_button_callback(interaction: discord.Interaction):
     
     await interaction.message.edit(embed=embed, view=view)
     await interaction.response.send_message(f"LOA request approved!", ephemeral=True)
+    save_data(f"{interaction.user}:{}")
+     try:
+         await user.add_roles(guild.get_role(LOA_ID))
+     except discord.Forbidden:
+         await interaction.response.send_message("I don't have permission to add roles to this user!", ephemeral=True)
+         return
+     except discord.HTTPException:
+         await interaction.response.send_message("Failed to add the role. Please try again.", ephemeral=True)
+         return
 
 async def deny_button_callback(interaction: discord.Interaction):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
