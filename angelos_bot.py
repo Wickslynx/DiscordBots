@@ -300,6 +300,26 @@ async def retire(interaction: discord.Interaction, last_words: str):
 
 
 
+async def deny_button_callback(interaction: discord.Interaction):
+    role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message("You don't have permission to deny LOA requests!", ephemeral=True)
+        return
+
+    embed = interaction.message.embeds[0]
+    embed.color = discord.Color.red()
+    embed.add_field(name="Status", value=f"Denied by {interaction.user.mention}", inline=False)
+
+    view = discord.ui.View()
+    approve_button = discord.ui.Button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa", disabled=True)
+    deny_button = discord.ui.Button(label="Deny", style=discord.ButtonStyle.red, custom_id="deny_loa", disabled=True)
+    view.add_item(approve_button)
+    view.add_item(deny_button)
+
+    await interaction.message.edit(embed=embed, view=view)
+    await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
+
+
 
 async def approve_button_callback(interaction: discord.Interaction):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
