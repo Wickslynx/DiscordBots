@@ -25,11 +25,10 @@ class Bot(commands.Bot):
 
     @tasks.loop(time=time(0, 0))  # (00:00)
     async def daily_check(self):
-         loa_data = load_loa_data()
+        loa_data = load_loa_data()
         today = datetime.now().strftime('%Y-%m-%d')
         
         for user_id, info in list(loa_data.items()):
-           
             if info['start_date'] == today:
                 try:
                     user = await self.fetch_user(int(user_id))
@@ -41,7 +40,7 @@ class Bot(commands.Bot):
             if info['end_date'] == today:
                 try:
                     user = await self.fetch_user(int(user_id))
-                    await user.send("Your LOA period has ended today.")
+                    await user.send("Your LOA period has ended today!")
 
                     guild = self.get_guild(1223694900084867247)  
                     if guild:
@@ -302,9 +301,6 @@ async def retire(interaction: discord.Interaction, last_words: str):
 
 
 
-
-
-
 async def approve_button_callback(interaction: discord.Interaction):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
     if role not in interaction.user.roles:
@@ -315,35 +311,33 @@ async def approve_button_callback(interaction: discord.Interaction):
     embed.color = discord.Color.green()
     embed.add_field(name="Status", value=f"Approved by {interaction.user.mention}", inline=False)
     
-
-    view = discord.ui.View()
-    approve_button = discord.ui.Button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa", disabled=True)
-    deny_button = discord.ui.Button(label="Deny", style=discord.ButtonStyle.red, custom_id="deny_loa", disabled=True)
-    view.add_item(approve_button)
-    view.add_item(deny_button)
     
-    await interaction.message.edit(embed=embed, view=view)
-    await interaction.response.send_message(f"LOA request approved!", ephemeral=True)
-    save_data(f"{interaction.user}:{}")
-     try:
-         await user.add_roles(guild.get_role(LOA_ID))
-     except discord.Forbidden:
-         await interaction.response.send_message("I don't have permission to add roles to this user!", ephemeral=True)
-         return
-     except discord.HTTPException:
-         await interaction.response.send_message("Failed to add the role. Please try again.", ephemeral=True)
-         return
+    user_field = discord.utils.get(embed.fields, name="Staff Member")
+    start_date_field = discord.utils.get(embed.fields, name="Start Date")
+    end_date_field = discord.utils.get(embed.fields, name="End Date")
+    
+    if all([user_field, start_date_field, end_date_field]):
 
-async def deny_button_callback(interaction: discord.Interaction):
-    role = discord.utils.get(interaction.guild.roles, id=OT_ID)
-    if role not in interaction.user.roles:
-        await interaction.response.send_message("You don't have permission to deny LOA requests!", ephemeral=True)
-        return
+        user_id = ''.join(filter(str.isdigit, user_field.value))
+
+        start_date = datetime.strptime(start_date_field.value, "%B %d, %Y").strftime('%Y-%m-%d')
+        end_date = datetime.strptime(end_date_field.value, "%B %d, %Y").strftime('%Y-%m-%d')
         
-    embed = interaction.message.embeds[0]
-    embed.color = discord.Color.red()
-    embed.add_field(name="Status", value=f"Denied by {interaction.user.mention}", inline=False)
-    
+        loa_data = load_loa_data()
+        loa_data[user_id] = {
+            'start_date': start_date,
+            'end_date': end_date
+        }
+        save_loa_data(loa_data)
+
+        try:
+            member = interaction.guild.get_member(int(user_id))
+            if member:
+                await member.add_roles(interaction.guild.get_role(LOA_ID))
+        except:
+            await interaction.followup.send("Failed to add LOA role", ephemeral=True)
+
+    # Update buttons
     view = discord.ui.View()
     approve_button = discord.ui.Button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa", disabled=True)
     deny_button = discord.ui.Button(label="Deny", style=discord.ButtonStyle.red, custom_id="deny_loa", disabled=True)
@@ -351,11 +345,7 @@ async def deny_button_callback(interaction: discord.Interaction):
     view.add_item(deny_button)
     
     await interaction.message.edit(embed=embed, view=view)
-    await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
-
-
-
-
+    await interaction.response.send_message("LOA request approved!", ephemeral=True)
 
 
 
