@@ -62,18 +62,18 @@ class Bot(commands.Bot):
 bot = Bot()
 
 # Channel IDs.
-SERVER_ID = "1338937592288383017"
+SERVER_ID = 1338937592288383017
 ANNOUNCEMENT_CHANNEL_ID =  ""
-INFRACTIONS_CHANNEL_ID = "1339236184982949909"
-PROMOTIONS_CHANNEL_ID = "1339236264058294385"
-SUGGEST_CHANNEL_ID = "1339228214454779977"
-RETIREMENTS_CHANNEL_ID = "1339236525577207888"
-INTERNAL_AFFAIRS_ID = "1338940740872572970"
-HR_ID = "1338940740872572970"
-LOA_CHANNEL_ID = "1339228346050941021"
-OT_ID = "1338943968276254772"
-STAFF_TEAM_ID = "1338954604217503858"
-LOA_ID = "1339052498324951070"
+INFRACTIONS_CHANNEL_ID = 1339236184982949909
+PROMOTIONS_CHANNEL_ID = 1339236264058294385
+SUGGEST_CHANNEL_ID = 1339228214454779977
+RETIREMENTS_CHANNEL_ID = 1339236525577207888
+INTERNAL_AFFAIRS_ID = 1338940740872572970
+HR_ID = 1338940740872572970
+LOA_CHANNEL_ID = 1339228346050941021
+OT_ID = 1338943968276254772
+STAFF_TEAM_ID = 1338954604217503858
+LOA_ID = 1339052498324951070
 
 # Helper functions 
 async def get_channel_by_id(guild, channel_id):
@@ -255,7 +255,7 @@ async def retire(interaction: discord.Interaction, last_words: str):
         await channel.send(f"{interaction.user.mention}")
         embed = discord.Embed(
             title="Retirement :(",
-            description=f'{interaction.user.mention} has decided to **retire!** \n  The Los Angoles **staff team** wishes you best of luck! \n\n  **Last words:** \n {last_words} \n \n  Goodbye!',
+            description=f'{interaction.user.mention} has decided to **retire!** \n  The Squid Squad **staff team** wishes you best of luck! \n\n  **Last words:** \n {last_words} \n \n  Goodbye!',
             color=discord.Color.blue(),
             timestamp=datetime.utcnow()
         )
@@ -341,7 +341,7 @@ async def approve_button_callback(interaction: discord.Interaction):
 
 
 
-@bot.tree.command(name="loa_request", description="Submit a Leave of Absence request")
+@bot.tree.command(name="loa request", description="Submit a Leave of Absence request")
 async def loa_request(interaction: discord.Interaction, start_date: str, end_date: str, reason: str):
 
     role = discord.utils.get(interaction.guild.roles, id=STAFF_TEAM_ID)
