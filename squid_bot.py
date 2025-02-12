@@ -188,7 +188,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         await channel.send(embed=embed, view=view)
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
     else:
-        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True
+        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
       
       
