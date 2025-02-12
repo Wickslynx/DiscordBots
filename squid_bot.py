@@ -163,7 +163,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
         embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
         
-        # Create view and buttons
+
         view = discord.ui.View()
         upvote_button = discord.ui.Button(
             style=discord.ButtonStyle.success, 
@@ -181,12 +181,14 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
             current_votes = int(button.label)
             button.label = str(current_votes + 1)
             await interaction.response.edit_message(view=view)
+            await interaction.followup.send("You have upvoted this suggestion.", ephemeral=True)
 
         async def downvote_callback(interaction: discord.Interaction):
             button = view.children[1]  
             current_votes = int(button.label)
             button.label = str(current_votes + 1)
             await interaction.response.edit_message(view=view)
+            await interaction.followup.send("You have downvoted this suggestion.", ephemeral=True)
 
         upvote_button.callback = upvote_callback
         downvote_button.callback = downvote_callback
