@@ -345,7 +345,7 @@ async def approve_button_callback(interaction: discord.Interaction):
 
 
 
-@bot.tree.command(name="loa request", description="Submit a Leave of Absence request")
+@bot.tree.command(name="loa_request", description="Submit a Leave of Absence request", aliases=["loa request"])
 async def loa_request(interaction: discord.Interaction, start_date: str, end_date: str, reason: str):
 
     role = discord.utils.get(interaction.guild.roles, id=STAFF_TEAM_ID)
