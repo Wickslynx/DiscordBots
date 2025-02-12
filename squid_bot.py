@@ -136,6 +136,25 @@ async def on_member_remove(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
+
+@bot.tree.command(name="ban", description="Ban a member from the server.")
+async def ban(interaction: discord.Interaction, member: discord.Member, *, reason: str = None):
+    role = discord.utils.get(interaction.guild.roles, id=HR_ID)
+    if role not in interaction.user.roles:
+        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+            return
+    try:
+        await member.ban(reason=reason)
+        await interaction.response.send_message(f"{member.mention} has been banned from the server.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("I do not have permission to ban this user.", ephemeral=True)
+    except discord.HTTPException:
+        await interaction.response.send_message("An error occurred while trying to ban this user.", ephemeral=True)
+
+
+
 @bot.tree.command(name="say", description="Make the bot say a message.")
 async def say(interaction: discord.Interaction, message: str):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
