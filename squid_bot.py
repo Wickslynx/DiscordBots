@@ -141,6 +141,15 @@ commands.Bot(command_prefix="!", intents=intents)
 async def get_channel_by_id(guild, channel_id):
     return discord.utils.get(guild.channels, id=channel_id)
 
+
+# Create the bot instance
+intents = discord.Intents.default()
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Function to get the channel by ID
+async def get_channel_by_id(guild, channel_id):
+    return discord.utils.get(guild.channels, id=channel_id)
+
 # Define the suggest command
 @bot.tree.command(name="suggest", description="Submit a suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
@@ -154,7 +163,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
         embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
         
- 
+        # Create view and buttons
         view = discord.ui.View()
         upvote_button = discord.ui.Button(
             style=discord.ButtonStyle.success, 
@@ -168,16 +177,16 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
 
         async def upvote_callback(interaction: discord.Interaction):
-            button = interaction.component
+            button = view.children[0]  
             current_votes = int(button.label)
             button.label = str(current_votes + 1)
-            await interaction.response.edit_message(view=interaction.message.components)
+            await interaction.response.edit_message(view=view)
 
         async def downvote_callback(interaction: discord.Interaction):
-            button = interaction.component
+            button = view.children[1]  
             current_votes = int(button.label)
             button.label = str(current_votes + 1)
-            await interaction.response.edit_message(view=interaction.message.components)
+            await interaction.response.edit_message(view=view)
 
         upvote_button.callback = upvote_callback
         downvote_button.callback = downvote_callback
@@ -188,8 +197,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         await channel.send(embed=embed, view=view)
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
     else:
-        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
-
+        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True
       
       
 @bot.tree.command(name="infract", description="Infract a user.")
