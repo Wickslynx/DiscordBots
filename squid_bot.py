@@ -16,7 +16,7 @@ class Bot(commands.Bot):
         super().__init__(
             command_prefix='/',
             intents=intents,
-            application_id=APPLICATION_ID
+            application_id=SERVER_ID
         )
     
     async def setup_hook(self):
@@ -62,20 +62,18 @@ class Bot(commands.Bot):
 bot = Bot()
 
 # Channel IDs.
-WELCOME_CHANNEL_ID = 
-LEAVES_CHANNEL_ID = 
-ANNOUNCEMENT_CHANNEL_ID =  
-REQUEST_CHANNEL_ID = 
-INFRACTIONS_CHANNEL_ID = 
-PROMOTIONS_CHANNEL_ID = 
-SUGGEST_CHANNEL_ID = 
-RETIREMENTS_CHANNEL_ID = 
-INTERNAL_AFFAIRS_ID = 
-LOA_CHANNEL_ID = 
-OT_ID = 
-STAFF_TEAM_ID = 
-LOA_ID = 
-SERVER_ID = 
+SERVER_ID = "1338937592288383017"
+ANNOUNCEMENT_CHANNEL_ID =  ""
+INFRACTIONS_CHANNEL_ID = "1339236184982949909"
+PROMOTIONS_CHANNEL_ID = "1339236264058294385"
+SUGGEST_CHANNEL_ID = "1339228214454779977"
+RETIREMENTS_CHANNEL_ID = "1339236525577207888"
+INTERNAL_AFFAIRS_ID = "1338940740872572970"
+HR_ID = "1338940740872572970"
+LOA_CHANNEL_ID = "1339228346050941021"
+OT_ID = "1338943968276254772"
+STAFF_TEAM_ID = "1338954604217503858"
+LOA_ID = "1339052498324951070"
 
 # Helper functions 
 async def get_channel_by_id(guild, channel_id):
@@ -106,35 +104,6 @@ async def on_ready():
         )
     )
 
-# When a member joins send a message.
-@bot.event
-async def on_member_join(member):
-    channel = await get_channel_by_id(member.guild, WELCOME_CHANNEL_ID)
-    if channel:
-        embed = discord.Embed(
-            title="New Member!",
-            description=f"Welcome {member.mention} to the server!",
-            color=discord.Color.green(),
-            timestamp=datetime.utcnow()
-        )
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
-        embed.add_field(name="Member Count", value=str(member.guild.member_count))
-        await channel.send(embed=embed)
-
-# When a member leaves, send a message.
-@bot.event
-async def on_member_remove(member):
-    channel = await get_channel_by_id(member.guild, LEAVES_CHANNEL_ID)
-    if channel:
-        embed = discord.Embed(
-            title="Member Left",
-            description=f"Goodbye {member.mention}! We'll miss you!",
-            color=discord.Color.red(),
-            timestamp=datetime.utcnow()
-        )
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
-        embed.add_field(name="Member Count", value=str(member.guild.member_count))
-        await channel.send(embed=embed)
 
 
 @bot.tree.command(name="ban", description="Ban a member from the server.")
