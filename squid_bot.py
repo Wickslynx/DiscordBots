@@ -298,6 +298,7 @@ async def approve_button_callback(interaction: discord.Interaction):
         await interaction.response.send_message("You don't have permission to approve LOA requests!", ephemeral=True)
         return
         
+        
     embed = interaction.message.embeds[0]
     embed.color = discord.Color.green()
     embed.add_field(name="Status", value=f"Approved by {interaction.user.mention}", inline=False)
@@ -334,9 +335,9 @@ async def approve_button_callback(interaction: discord.Interaction):
     deny_button = discord.ui.Button(label="Deny", style=discord.ButtonStyle.red, custom_id="deny_loa", disabled=True)
     view.add_item(approve_button)
     view.add_item(deny_button)
-    
-    await interaction.message.edit(embed=embed, view=view)
+        
     await interaction.response.send_message("LOA request approved!", ephemeral=True)
+    await interaction.message.edit(embed=embed, view=view)
 
 
 
