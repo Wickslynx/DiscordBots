@@ -77,6 +77,7 @@ OT_ID = 1223922259727483003
 STAFF_TEAM_ID = 1223920619993956372
 AWAITING_TRAINING_ID = 1309972134604308500
 LOA_ID = 1322405982462017546
+HR_ID = 
 
 # Helper functions 
 async def get_channel_by_id(guild, channel_id):
@@ -179,7 +180,24 @@ async def training_request(interaction: discord.Interaction):
         
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
+
+@bot.tree.command(name="ban", description="Ban a member from the server.")
+async def ban(interaction: discord.Interaction, member: discord.Member, *, reason: str = None):
+    role = discord.utils.get(interaction.guild.roles, id=HR_ID)
+    if role not in interaction.user.roles:
+        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+            return
         
+    try:
+        await member.ban(reason=reason)
+        await interaction.response.send_message(f"{member.mention} has been banned from the server.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("I do not have permission to ban this user.", ephemeral=True)
+    except discord.HTTPException:
+        await interaction.response.send_message("An error occurred while trying to ban this user.", ephemeral=True)
+            
 @bot.tree.command(name="say", description="Make the bot say a message.")
 async def say(interaction: discord.Interaction, message: str):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
