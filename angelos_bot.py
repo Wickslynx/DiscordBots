@@ -190,26 +190,54 @@ async def say(interaction: discord.Interaction, message: str):
         await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
 
 
-        
+
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
-    
     channel = await get_channel_by_id(interaction.guild, SUGGEST_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
-            title="Suggestion:",
+            title="**Suggestion:**",
             description=suggestion,
             color=discord.Color.yellow(),
             timestamp=datetime.utcnow()
         )
-        embed.set_footer(text=f"Suggested by {interaction.user.name}")
+        embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
         content = ""
-        sent_message = await channel.send(content=content, embed=embed)
-        await sent_message.add_reaction('✅')  # Upvote
-        await sent_message.add_reaction('❌')  # Downvote
+        upvote_button = discord.ui.Button(style=discord.ButtonStyle.success, label="0")
+        downvote_button = discord.ui.Button(style=discord.ButtonStyle.danger, label="0")
+                                
+        components = [discord.ui.ActionRow(upvote_button, downvote_button)]
+        upvote_button.callback = upvote_button_callback
+        downvote_button.callback = downvote_button_callback
+            
+        sent_message = await channel.send(content=content, embed=embed, components=components)
+        
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
+
+async def upvote_button_callback(interaction: discord.Interaction):
+    button = interaction.component
+    current_label = button.label
+    upvotes = int(current_label)
+    upvotes += 1
+    button.label = f"{upvotes}"
+    await update_buttons(interaction)
+
+async def downvote_button_callback(interaction: discord.Interaction):
+    button = interaction.component
+    current_label = button.label
+    downvotes = int(current_label)
+    downvotes += 1
+    button.label = f"{downvotes}"
+    await update_buttons(interaction)
+
+async def update_buttons(interaction: discord.Interaction):
+    await interaction.message.edit(components=interaction.message.components)
+    await interaction.response.defer()
+
+
+
 
 @bot.tree.command(name="infract", description="Infract a user.")
 async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str, notes: str):
