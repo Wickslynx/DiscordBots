@@ -342,14 +342,10 @@ async def approve_button_callback(interaction: discord.Interaction):
     await interaction.response.send_message("LOA request approved!", ephemeral=True)
     await interaction.message.edit(embed=embed, view=view)
 
-@bot.tree.command(name="loa", description="Leave of Absence commands")
-async def loa(ctx: discord.Interaction):
-        pass
-    
 
 
-@bot.tree.command(name="loa_request", description="Submit a Leave of Absence request", parent=loa)
-async def request(interaction: discord.Interaction, start_date: str, end_date: str, reason: str):
+@bot.tree.command(name="loa_request", description="Submit a Leave of Absence request")
+async def loa_request(interaction: discord.Interaction, start_date: str, end_date: str, reason: str):
 
     role = discord.utils.get(interaction.guild.roles, id=STAFF_TEAM_ID)
     if role not in interaction.user.roles:
