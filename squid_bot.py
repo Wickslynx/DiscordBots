@@ -161,7 +161,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
             color=discord.Color.yellow(),
             timestamp=datetime.utcnow()
         )
-        embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
+        embed.set_footer(text=f"Suggested by {interaction.user.mention}")
         
 
         view = discord.ui.View()
