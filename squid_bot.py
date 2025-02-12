@@ -135,7 +135,14 @@ async def say(interaction: discord.Interaction, message: str):
 
 
         
-@bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
+commands.Bot(command_prefix="!", intents=intents)
+
+# Function to get the channel by ID
+async def get_channel_by_id(guild, channel_id):
+    return discord.utils.get(guild.channels, id=channel_id)
+
+# Define the suggest command
+@bot.tree.command(name="suggest", description="Submit a suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
     channel = await get_channel_by_id(interaction.guild, SUGGEST_CHANNEL_ID)
     if channel:
@@ -147,7 +154,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
         embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
         
-        # Create view and buttons
+ 
         view = discord.ui.View()
         upvote_button = discord.ui.Button(
             style=discord.ButtonStyle.success, 
@@ -164,13 +171,13 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
             button = interaction.component
             current_votes = int(button.label)
             button.label = str(current_votes + 1)
-            await interaction.response.edit_message(view=view)
+            await interaction.response.edit_message(view=interaction.message.components)
 
         async def downvote_callback(interaction: discord.Interaction):
             button = interaction.component
             current_votes = int(button.label)
             button.label = str(current_votes + 1)
-            await interaction.response.edit_message(view=view)
+            await interaction.response.edit_message(view=interaction.message.components)
 
         upvote_button.callback = upvote_callback
         downvote_button.callback = downvote_callback
@@ -181,7 +188,7 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         await channel.send(embed=embed, view=view)
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
     else:
-        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
+        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True
 
       
       
