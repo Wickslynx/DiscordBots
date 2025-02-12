@@ -149,8 +149,6 @@ async def say(interaction: discord.Interaction, message: str):
         
 @bot.tree.command(name="suggest", description="Submit an suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
-    UPVOTES = 0
-    DOWNVOTES = 0
     channel = await get_channel_by_id(interaction.guild, SUGGEST_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
@@ -161,41 +159,39 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
         embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
         content = ""
-      
-        components = [
-            discord.ui.ActionRow(
-                upvote_button = discord.ui.Button(style=discord.ButtonStyle.success, label=f"{UPVOTES}"),
-                downvote_button = discord.ui.Button(style=discord.ButtonStyle.danger, label=f"{DOWNVOTES}")
-            )
-        ]
-      
-        sent_message = await channel.send(content=content, embed=embed, components=components)
+        upvote_button = discord.ui.Button(style=discord.ButtonStyle.success, label="0")
+        downvote_button = discord.ui.Button(style=discord.ButtonStyle.danger, label="0")
+                                
+        components = [discord.ui.ActionRow(upvote_button, downvote_button)]
         upvote_button.callback = upvote_button_callback
         downvote_button.callback = downvote_button_callback
+            
+        sent_message = await channel.send(content=content, embed=embed, components=components)
+        
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
-class VoteView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.upvotes = 0
-        self.downvotes = 0
+async def upvote_button_callback(interaction: discord.Interaction):
+    button = interaction.component
+    current_label = button.label
+    upvotes = int(current_label)
+    upvotes += 1
+    button.label = f"{upvotes}"
+    await update_buttons(interaction)
 
-    @discord.ui.button(label="Upvote", style=discord.ButtonStyle.success)
-    async def upvote_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.upvotes += 1
-        await self.update_message(interaction)
+async def downvote_button_callback(interaction: discord.Interaction):
+    button = interaction.component
+    current_label = button.label
+    downvotes = int(current_label)
+    downvotes += 1
+    button.label = f"{downvotes}"
+    await update_buttons(interaction)
 
-    @discord.ui.button(label="Downvote", style=discord.ButtonStyle.danger)
-    async def downvote_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.downvotes += 1
-        await self.update_message(interaction)
+async def update_buttons(interaction: discord.Interaction):
+    await interaction.message.edit(components=interaction.message.components)
+    await interaction.response.defer()
 
-    async def update_message(self, interaction: discord.Interaction):
-        embed = interaction.message.embeds[0]
-        embed.set_footer(text=f"Upvotes: {self.upvotes} | Downvotes: {self.downvotes}")
-        await 
       
       
 @bot.tree.command(name="infract", description="Infract a user.")
