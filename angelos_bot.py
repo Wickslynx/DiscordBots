@@ -77,7 +77,7 @@ OT_ID = 1223922259727483003
 STAFF_TEAM_ID = 1223920619993956372
 AWAITING_TRAINING_ID = 1309972134604308500
 LOA_ID = 1322405982462017546
-HR_ID = 
+HR_ID = 1309973478539268136
 
 # Helper functions 
 async def get_channel_by_id(guild, channel_id):
@@ -267,7 +267,7 @@ async def say(interaction: discord.Interaction, message: str):
             await interaction.response.defer()
             await interaction.message.edit(view=interaction.message.components[0].view)
         except Exception as e:
-            logging.error(f"An error occurred while updating the buttons: {e}"
+            logging.error(f"An error occurred while updating the buttons: {e}")
 
 
 
