@@ -207,67 +207,104 @@ async def say(interaction: discord.Interaction, message: str):
     else:
         await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
 
+vote_counts = {}
+
+def create_vote_buttons():
+    upvote_button = discord.ui.Button(style=discord.ButtonStyle.success, label="0", custom_id="upvote")
+    downvote_button = discord.ui.Button(style=discord.ButtonStyle.danger, label="0", custom_id="downvote")
+    view = discord.ui.View(timeout=None)
+    view.add_item(upvote_button)
+    view.add_item(downvote_button)
+    return view, upvote_button, downvote_button
+
+async def handle_upvote(interaction: discord.Interaction):
+    message_id = str(interaction.message.id)
+    if message_id not in vote_counts:
+        vote_counts[message_id] = {"upvotes": 0, "downvotes": 0}
+    
+    vote_counts[message_id]["upvotes"] += 1
+    
+    view = discord.ui.View(timeout=None)
+    upvote_button = discord.ui.Button(
+        style=discord.ButtonStyle.success, 
+        label=str(vote_counts[message_id]["upvotes"]), 
+        custom_id="upvote"
+    )
+    downvote_button = discord.ui.Button(
+        style=discord.ButtonStyle.danger, 
+        label=str(vote_counts[message_id]["downvotes"]), 
+        custom_id="downvote"
+    )
+    
+    upvote_button.callback = handle_upvote
+    downvote_button.callback = handle_downvote
+    
+    view.add_item(upvote_button)
+    view.add_item(downvote_button)
+    
+    await interaction.response.edit_message(view=view)
+
+async def handle_downvote(interaction: discord.Interaction):
+    message_id = str(interaction.message.id)
+    if message_id not in vote_counts:
+        vote_counts[message_id] = {"upvotes": 0, "downvotes": 0}
+    
+    vote_counts[message_id]["downvotes"] += 1
+
+    view = discord.ui.View(timeout=None)
+    upvote_button = discord.ui.Button(
+        style=discord.ButtonStyle.success, 
+        label=str(vote_counts[message_id]["upvotes"]), 
+        custom_id="upvote"
+    )
+    downvote_button = discord.ui.Button(
+        style=discord.ButtonStyle.danger, 
+        label=str(vote_counts[message_id]["downvotes"]), 
+        custom_id="downvote"
+    )
+    
+    upvote_button.callback = handle_upvote
+    downvote_button.callback = handle_downvote
+    
+    view.add_item(upvote_button)
+    view.add_item(downvote_button)
+    
+    await interaction.response.edit_message(view=view)
 
 @bot.tree.command(name="suggest", description="Submit a suggestion to the suggest channel.")
 async def suggest(interaction: discord.Interaction, suggestion: str):
-    try:
-        channel = discord.utils.get(interaction.guild.channels, id=SUGGEST_CHANNEL_ID)
-        if channel:
-            embed = discord.Embed(
-                title="**Suggestion:**",
-                description=suggestion,
-                color=discord.Color.yellow(),
-                timestamp=datetime.utcnow()
-            )
-            embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
-            content = ""
-            view = discord.ui.View()
-
-            upvote_button = discord.ui.Button(style=discord.ButtonStyle.success, label="0")
-            downvote_button = discord.ui.Button(style=discord.ButtonStyle.danger, label="0")
-
-            upvote_button.callback = lambda inter: self.upvote_button_callback(inter, upvote_button)
-            downvote_button.callback = lambda inter: self.downvote_button_callback(inter, downvote_button)
-
-            view.add_item(upvote_button)
-            view.add_item(downvote_button)
-                                
-            await channel.send(content=content, embed=embed, view=view)
-            
-            await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
-        else:
-            await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
-    except Exception as e:
-        logging.error(f"An error occurred while processing the suggest command: {e}")
-        await interaction.response.send_message("An error occurred while processing your command.", ephemeral=True)
-
-async def upvote_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-    try:
-        current_label = button.label
-        upvotes = int(current_label)
-        upvotes += 1
-        button.label = f"{upvotes}"
-        await self.update_buttons(interaction)
-    except Exception as e:
-        logging.error(f"An error occurred while processing the upvote button: {e}")
-
-async def downvote_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-    try:
-        current_label = button.label
-        downvotes = int(current_label)
-        downvotes += 1
-        button.label = f"{downvotes}"
-        await self.update_buttons(interaction)
-    except Exception as e:
-        logging.error(f"An error occurred while processing the downvote button: {e}")
-
-async def update_buttons(self, interaction: discord.Interaction):
-    try:
-        await interaction.response.defer()
-        await interaction.message.edit(view=interaction.message.components[0].view)
-    except Exception as e:
-        logging.error(f"An error occurred while updating the buttons: {e}"
-
+    channel = await get_channel_by_id(interaction.guild, SUGGEST_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(
+            title="**Suggestion:**",
+            description=suggestion,
+            color=discord.Color.yellow(),
+            timestamp=datetime.utcnow()
+        )
+        embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
+        
+        view = discord.ui.View(timeout=None)
+        upvote_button = discord.ui.Button(
+            style=discord.ButtonStyle.success, 
+            label="0", 
+            custom_id="upvote"
+        )
+        downvote_button = discord.ui.Button(
+            style=discord.ButtonStyle.danger, 
+            label="0", 
+            custom_id="downvote"
+        )
+        
+        upvote_button.callback = handle_upvote
+        downvote_button.callback = handle_downvote
+        
+        view.add_item(upvote_button)
+        view.add_item(downvote_button)
+        
+        await channel.send(embed=embed, view=view)
+        await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
+    else:
+        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
 @bot.tree.command(name="infract", description="Infract a user.")
 async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str, notes: str):
