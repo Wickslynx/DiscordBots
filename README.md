@@ -7,5 +7,6 @@ These bots include:
 - **Los Angoles Roleplay Bot**
 - **Los Angelos Police Deparment Bot**
 - **Squid Bot**
+- **California Roleplay Bot**
 
 
