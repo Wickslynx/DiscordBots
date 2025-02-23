@@ -207,15 +207,7 @@ async def say(interaction: discord.Interaction, message: str):
     else:
         await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
 
-vote_counts = {}  # Format: {message_id: {"upvotes": 0, "downvotes": 0, "voted_users": {user_id: "up/down"}}}
-
-def create_vote_buttons():
-    upvote_button = discord.ui.Button(style=discord.ButtonStyle.success, label="✔️ 0", custom_id="upvote")
-    downvote_button = discord.ui.Button(style=discord.ButtonStyle.danger, label="🗙 0", custom_id="downvote")
-    view = discord.ui.View(timeout=None)
-    view.add_item(upvote_button)
-    view.add_item(downvote_button)
-    return view, upvote_button, downvote_button
+vote_counts = {}
 
 async def handle_upvote(interaction: discord.Interaction):
     message_id = str(interaction.message.id)
@@ -224,15 +216,16 @@ async def handle_upvote(interaction: discord.Interaction):
     if message_id not in vote_counts:
         vote_counts[message_id] = {"upvotes": 0, "downvotes": 0, "voted_users": {}}
     
-
-    if user_id in vote_counts[message_id]["voted_users"]:
-        await interaction.response.send_message("You have already voted on this suggestion!", ephemeral=True)
-        return
+    if user_id in vote_counts[message_id]["voted_users"] and vote_counts[message_id]["voted_users"][user_id] == "up":
+        vote_counts[message_id]["upvotes"] -= 1
+        del vote_counts[message_id]["voted_users"][user_id]
+    else:
+        if user_id in vote_counts[message_id]["voted_users"] and vote_counts[message_id]["voted_users"][user_id] == "down":
+            vote_counts[message_id]["downvotes"] -= 1
+        
+        vote_counts[message_id]["upvotes"] += 1
+        vote_counts[message_id]["voted_users"][user_id] = "up"
     
-    vote_counts[message_id]["upvotes"] += 1
-    vote_counts[message_id]["voted_users"][user_id] = "up"
-    
-
     view = discord.ui.View(timeout=None)
     upvote_button = discord.ui.Button(
         style=discord.ButtonStyle.success, 
@@ -260,14 +253,16 @@ async def handle_downvote(interaction: discord.Interaction):
     if message_id not in vote_counts:
         vote_counts[message_id] = {"upvotes": 0, "downvotes": 0, "voted_users": {}}
     
-    if user_id in vote_counts[message_id]["voted_users"]:
-        await interaction.response.send_message("You have already voted on this suggestion!", ephemeral=True)
-        return
+    if user_id in vote_counts[message_id]["voted_users"] and vote_counts[message_id]["voted_users"][user_id] == "down":
+        vote_counts[message_id]["downvotes"] -= 1
+        del vote_counts[message_id]["voted_users"][user_id]
+    else:
+        if user_id in vote_counts[message_id]["voted_users"] and vote_counts[message_id]["voted_users"][user_id] == "up":
+            vote_counts[message_id]["upvotes"] -= 1
+        
+        vote_counts[message_id]["downvotes"] += 1
+        vote_counts[message_id]["voted_users"][user_id] = "down"
     
-    vote_counts[message_id]["downvotes"] += 1
-    vote_counts[message_id]["voted_users"][user_id] = "down"
-    
-
     view = discord.ui.View(timeout=None)
     upvote_button = discord.ui.Button(
         style=discord.ButtonStyle.success, 
@@ -300,7 +295,6 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
         embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
         
-
         view = discord.ui.View(timeout=None)
         upvote_button = discord.ui.Button(
             style=discord.ButtonStyle.success, 
@@ -323,7 +317,6 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
-
             
 @bot.tree.command(name="infract", description="Infract a user.")
 async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str, notes: str):
