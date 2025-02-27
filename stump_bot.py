@@ -1,64 +1,72 @@
 import discord
-from discord.ext import commands
+from discord import app_commands
 
-# Set up intents (remove duplicate line)
+
 intents = discord.Intents.default()
 intents.messages = True
-intents.message_content = True  # Need this to read message content
+intents.message_content = True 
 
-# Create bot (remove duplicate line)
-bot = commands.Bot(command_prefix="/", intents=intents)
 
-# For storing messages (remove duplicate line)
-afk_messages = {}  
+class AFKClient(discord.Client):
+    def __init__(self):
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+        self.afk_messages = {}  
 
-@bot.command(name="afk")
-async def afk(ctx, *, user_message: str):
-    # Save the original nickname before changing it
-    original_nick = ctx.author.display_name
+    async def setup_hook(self):
+        
+        await self.tree.sync()  
+
+client = AFKClient()
+
+@client.event
+async def on_ready():
+    print(f'Logged in as {client.user}')
+
+@client.tree.command(name="afk", description="Set your AFK status with a message")
+async def afk(interaction: discord.Interaction, message: str):
+
+    original_nick = interaction.user.display_name
     
-    # Store the AFK message
-    afk_messages[ctx.author.id] = user_message
+    client.afk_messages[interaction.user.id] = message
     
-    # Update nickname with AFK prefix
+
     try:
-        await ctx.author.edit(nick=f"AFK| {original_nick}")
+        await interaction.user.edit(nick=f"AFK| {original_nick}")
     except discord.Forbidden:
-        # Handle case where bot doesn't have permission to change nicknames
+      
         pass
         
-    # Send confirmation message (fixed variable name from 'message' to 'user_message')
-    await ctx.send(f"AFK: {ctx.author.name}: {user_message}")
 
-@bot.event
+    await interaction.response.send_message(f"{interaction.user.mention} is AFK: {message}")
+
+@client.event
 async def on_message(message):
-    if message.author == bot.user:  # Prevent bot from answering itself.
+    if message.author == client.user:  
         return
         
-    # Check if the message author was AFK
-    if message.author.id in afk_messages:
-        # Get the original nickname (remove AFK prefix)
+
+    if message.author.id in client.afk_messages:
+  
         current_nick = message.author.display_name
         if current_nick.startswith("AFK| "):
             try:
-                await message.author.edit(nick=current_nick[5:])  # Remove the "AFK| " prefix
+                await message.author.edit(nick=current_nick[5:]) 
             except discord.Forbidden:
                 pass
                 
-        # Remove from AFK list
-        del afk_messages[message.author.id]
-        # Fixed message wording
-        await message.channel.send(f"{message.author.name} is no longer AFK.")
+
+        del client.afk_messages[message.author.id]
+      
+        await message.channel.send(f"{message.author.mention} is no longer AFK.")
     
-    # Check if message mentions any AFK users
-    for user_id, afk_msg in afk_messages.items():
+
+    for user_id, afk_msg in list(client.afk_messages.items()):
         if message.mentions and any(user_id == mention.id for mention in message.mentions): 
             user = message.guild.get_member(user_id)
             if user:
                 await message.channel.send(f"{user.name} is AFK: {afk_msg}")
-    
-    # This line is important! It processes commands
-    await bot.process_commands(message)
 
-# Add your bot token inside the quotes
-bot.run("YOUR_BOT_TOKEN_HERE")
+token = ""
+
+client.run(token)
