@@ -27,7 +27,7 @@ class MusicClient(discord.Client):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
         self.music_queue = deque()
-        self.voice_clients = {}  # Store voice clients per guild
+        self.guild_voice_clients = {}  # Renamed to avoid conflict
         self.music_channels = {}  # Config for music channels per guild
         self.currently_playing = {}  # Track currently playing song
 
@@ -60,7 +60,7 @@ async def play_next(guild_id):
         client.currently_playing[guild_id] = None
         return
         
-    if guild_id not in client.voice_clients or not client.voice_clients[guild_id].is_connected():
+    if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
         client.music_queue.clear()
         return
         
@@ -74,7 +74,7 @@ async def play_next(guild_id):
     audio = discord.FFmpegPCMAudio(next_song.source['url'])
     
     # Start playing
-    voice_client = client.voice_clients[guild_id]
+    voice_client = client.guild_voice_clients[guild_id]
     voice_client.play(audio, after=lambda e: asyncio.run_coroutine_threadsafe(
         play_next(guild_id), client.loop).result())
     
@@ -106,10 +106,10 @@ async def playsong(interaction: discord.Interaction, url: str):
     song = Song(source['title'], url, interaction.user, source)
     
     # Connect to voice channel if not already connected
-    if guild_id not in client.voice_clients or not client.voice_clients[guild_id].is_connected():
+    if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
         voice_channel = interaction.user.voice.channel
         voice_client = await voice_channel.connect()
-        client.voice_clients[guild_id] = voice_client
+        client.guild_voice_clients[guild_id] = voice_client
     
     # Add song to queue
     client.music_queue.append(song)
@@ -155,10 +155,10 @@ async def playfile(interaction: discord.Interaction):
     song = Song(attachment.filename, attachment.url, interaction.user, source)
     
     # Connect to voice channel if not already connected
-    if guild_id not in client.voice_clients or not client.voice_clients[guild_id].is_connected():
+    if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
         voice_channel = interaction.user.voice.channel
         voice_client = await voice_channel.connect()
-        client.voice_clients[guild_id] = voice_client
+        client.guild_voice_clients[guild_id] = voice_client
     
     # Add song to queue
     client.music_queue.append(song)
@@ -175,7 +175,7 @@ async def skip(interaction: discord.Interaction):
     guild_id = interaction.guild.id
     
     # Check if bot is in a voice channel
-    if guild_id not in client.voice_clients or not client.voice_clients[guild_id].is_connected():
+    if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
         await interaction.response.send_message("I'm not playing anything right now!")
         return
         
@@ -185,7 +185,7 @@ async def skip(interaction: discord.Interaction):
         return
         
     # Stop current song (this will trigger play_next due to the after parameter)
-    client.voice_clients[guild_id].stop()
+    client.guild_voice_clients[guild_id].stop()
     
     await interaction.response.send_message("⏭️ Skipped to the next song!")
 
@@ -232,7 +232,6 @@ async def queue(interaction: discord.Interaction):
         queue_text += "📋 **Up Next**: Nothing in queue!"
         
     await interaction.response.send_message(queue_text)
-  
-token = ""
 
+token = ""
 client.run(token)
