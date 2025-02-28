@@ -182,80 +182,52 @@ async def play_next(guild_id):
     try:
         voice_client = client.guild_voice_clients[guild_id]
         
-        if current_type == "audio":
-            audio = discord.FFmpegPCMAudio(
-                next_media.source['url'],
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-                options="-vn -bufsize 1024k"
-            )
-            audio = discord.PCMVolumeTransformer(audio, volume=0.5)
-            voice_client.play(
-                audio, 
-                after=lambda e: handle_playback_error(e, guild_id)
-            )
-        else:  # video
-            # For videos, we need to:
-            # 1. Play audio through the voice client
-            # 2. Start a stream session for video
-            
-            # Play the audio component
-            audio = discord.FFmpegPCMAudio(
-                next_media.source['url'],
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-                options="-bufsize 1024k"  # Removed -vn to keep video stream
-            )
-            audio = discord.PCMVolumeTransformer(audio, volume=0.5)
-            voice_client.play(
-                audio, 
-                after=lambda e: handle_playback_error(e, guild_id)
-            )
-            
-            # Start streaming video
-            try:
-                # Get server and voice channel IDs
-                guild = voice_client.guild
-                channel_id = voice_client.channel.id
-                
-                # Prepare streaming activity update
-                stream_activity = discord.Streaming(
-                    name=next_media.title,
-                    url=next_media.url,
-                    platform="YouTube"
-                )
-                
-                # Set the bot's activity to streaming
-                await client.change_presence(activity=stream_activity)
-                
-                # Send special message with embedded stream link
-                if guild_id in client.music_channels:
-                    channel = client.get_channel(client.music_channels[guild_id])
-                    if channel:
-                        # Create embed with video thumbnail if available
-                        embed = discord.Embed(
-                            title=f"📺 Now Streaming: {next_media.title}",
-                            description=f"Requested by {next_media.requested_by.mention}\n\n[Join Video Stream]({next_media.url})",
-                            color=discord.Color.red()
-                        )
-                        
-                        # Try to get video thumbnail
-                        try:
-                            with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
-                                video_info = ydl.extract_info(next_media.url, download=False)
-                                if 'thumbnail' in video_info:
-                                    embed.set_image(url=video_info['thumbnail'])
-                        except:
-                            pass  # Ignore if thumbnail extraction fails
-                        
-                        await channel.send(embed=embed)
-            except Exception as stream_err:
-                print(f"Warning: Could not start video stream: {str(stream_err)}")
-                # Continue playing audio even if video streaming fails
+        # Play audio for both audio and video types
+        audio = discord.FFmpegPCMAudio(
+            next_media.source['url'],
+            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            options="-vn -bufsize 1024k"  # Always strip video, we'll handle video separately
+        )
+        audio = discord.PCMVolumeTransformer(audio, volume=0.5)
+        voice_client.play(
+            audio, 
+            after=lambda e: handle_playback_error(e, guild_id)
+        )
         
-        # Send notification to music channel (for audio only - video already handled above)
-        if current_type == "audio" and guild_id in client.music_channels:
+        # Send appropriate notification
+        if guild_id in client.music_channels:
             channel = client.get_channel(client.music_channels[guild_id])
             if channel:
-                await channel.send(f"🎵 Now playing: **{next_media.title}** (requested by {next_media.requested_by.mention})")
+                if current_type == "audio":
+                    await channel.send(f"🎵 Now playing: **{next_media.title}** (requested by {next_media.requested_by.mention})")
+                else:  # For videos that were queued, we'll send the embed again when it starts playing
+                    # Create rich embed with video link
+                    embed = discord.Embed(
+                        title=f"📺 Now Playing: {next_media.title}",
+                        description=f"Requested by {next_media.requested_by.mention}",
+                        color=discord.Color.red()
+                    )
+                    
+                    # Try to get thumbnail
+                    try:
+                        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+                            video_info = ydl.extract_info(next_media.url, download=False)
+                            if 'thumbnail' in video_info:
+                                embed.set_image(url=video_info['thumbnail'])
+                    except:
+                        pass
+                    
+                    # Add video link
+                    if "youtube.com/watch?v=" in next_media.url:
+                        video_id = next_media.url.split("watch?v=")[1].split("&")[0]
+                        embed.description += f"\n\n[Watch on YouTube](https://www.youtube.com/watch?v={video_id})"
+                    elif "youtu.be/" in next_media.url:
+                        video_id = next_media.url.split("youtu.be/")[1].split("?")[0]
+                        embed.description += f"\n\n[Watch on YouTube](https://www.youtube.com/watch?v={video_id})"
+                    else:
+                        embed.description += f"\n\n[Watch Video]({next_media.url})"
+                    
+                    await channel.send(embed=embed)
     
     except Exception as e:
         error_msg = f"Error playing media: {str(e)}"
@@ -267,6 +239,7 @@ async def play_next(guild_id):
         
         # Try to play next item
         asyncio.run_coroutine_threadsafe(play_next(guild_id), client.loop)
+
 
 
 def handle_playback_error(error, guild_id):
@@ -335,14 +308,24 @@ async def playvideo(interaction: discord.Interaction, url: str):
     guild_id = interaction.guild.id
     
     try:
-        source = await get_video_source(url)
+     
+        source = await get_audio_source(url)  
+        original_url = url  #
+        
+     
+        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+            video_info = ydl.extract_info(url, download=False)
+            video_title = video_info.get('title', 'Unknown Video')
+            thumbnail = video_info.get('thumbnail', '')
     except Exception as e:
         error_msg = f"Error retrieving the video: {str(e)}"
         await interaction.followup.send(f"Error: {error_msg}")
         return
         
-    video = Media(source['title'], url, interaction.user, source, media_type="video")
 
+    video = Media(video_title, original_url, interaction.user, source, media_type="video")
+
+    # Connect to voice channel if not already connected
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
         try:
             voice_channel = interaction.user.voice.channel
@@ -352,14 +335,43 @@ async def playvideo(interaction: discord.Interaction, url: str):
             await interaction.followup.send(f"Error: Error connecting to voice channel: {str(e)}")
             return
     
+    # Add to video queue
     client.video_queue.append(video)
     
+    # Create rich embed with video
+    embed = discord.Embed(
+        title=f"📺 Video: {video_title}",
+        description=f"Requested by {interaction.user.mention}",
+        color=discord.Color.red()
+    )
+    
+    if thumbnail:
+        embed.set_image(url=thumbnail)
+    
+    # If YouTube URL, reformat it for embedding
+    if "youtube.com/watch?v=" in original_url:
+        video_id = original_url.split("watch?v=")[1].split("&")[0]
+        embed_url = f"https://www.youtube.com/embed/{video_id}"
+        embed.description += f"\n\n[Watch on YouTube]({original_url})"
+    elif "youtu.be/" in original_url:
+        video_id = original_url.split("youtu.be/")[1].split("?")[0]
+        embed_url = f"https://www.youtube.com/embed/{video_id}"
+        embed.description += f"\n\n[Watch on YouTube]({original_url})"
+    else:
+        embed_url = original_url
+        embed.description += f"\n\n[Watch Video]({original_url})"
+    
+    # Send video embed to the music channel or to the interaction channel
+    target_channel = client.get_channel(client.music_channels.get(guild_id, interaction.channel_id))
+    await target_channel.send(embed=embed)
+    
+    # Start playing the audio portion if nothing is currently playing
     if guild_id not in client.currently_playing or client.currently_playing[guild_id] is None:
         client.currently_playing_type[guild_id] = "video"
         await play_next(guild_id)
-        await interaction.followup.send(f"📺 Now streaming video: **{video.title}**")
+        await interaction.followup.send(f"📺 Now playing video audio: **{video_title}**\nCheck {target_channel.mention} for the video!")
     else:
-        await interaction.followup.send(f"📺 Added to video queue: **{video.title}**")
+        await interaction.followup.send(f"📺 Added to video queue: **{video_title}**\nVideo link posted in {target_channel.mention}!")
         
 
 @client.tree.command(name="playfile", description="Play a file from attachment")
