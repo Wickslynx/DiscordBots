@@ -144,7 +144,7 @@ async def playsong(interaction: discord.Interaction, url: str):
         await play_next(guild_id)
         await interaction.followup.send(f"🎵 Now playing: **{song.title}**")
     else:
-        await interaction.followup.send(f"🎵 Added to queue: **{song.title}**"
+        await interaction.followup.send(f"🎵 Added to queue: **{song.title}**")
 
                                         
 @client.tree.command(name="playfile", description="Play a file from attachment")
