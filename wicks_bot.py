@@ -55,6 +55,7 @@ async def get_audio_source(url):
             }
     except Exception as e:
         print(f"Error extracting audio source: {str(e)}")
+        await interaction.response.send_message(f"❌ Error extracting audio source: {str(e)}")
         raise
 
 async def play_next(guild_id):
@@ -96,6 +97,7 @@ async def play_next(guild_id):
     
     except Exception as e:
         print(f"Error playing song: {str(e)}")
+        await interaction.response.send_message(f"❌ Error playing song: {str(e)}")
   
         asyncio.run_coroutine_threadsafe(play_next(guild_id), client.loop)
 
@@ -233,6 +235,68 @@ async def stop(interaction: discord.Interaction):
     client.currently_playing[guild_id] = None
     
     await interaction.response.send_message("⏹️ Playback stopped and queue cleared!")
+
+
+@client.tree.command(name="pause", description="Pause the current song")
+async def pause(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+
+    if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
+        await interaction.response.send_message("❌ I'm not playing anything right now!")
+        return
+    
+    try:
+        voice_client = client.guild_voice_clients[guild_id]
+        if voice_client.is_playing():
+            voice_client.pause()
+            await interaction.response.send_message("⏸️ Playback paused!")
+        else:
+            await interaction.response.send_message("❌ Nothing is playing right now!")
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to pause: {str(e)}")
+
+@client.tree.command(name="resume", description="Resume the paused song")
+async def resume(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+
+    if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
+        await interaction.response.send_message("❌ I'm not connected to a voice channel!")
+        return
+    
+    try:
+        voice_client = client.guild_voice_clients[guild_id]
+        if voice_client.is_paused():
+            voice_client.resume()
+            await interaction.response.send_message("▶️ Playback resumed!")
+        else:
+            await interaction.response.send_message("❌ Playback is not paused!")
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to resume: {str(e)}")
+
+@client.tree.command(name="volume", description="Set the playback volume (0-100)")
+@app_commands.describe(level="Volume level (0-100)")
+async def volume(interaction: discord.Interaction, level: int):
+    guild_id = interaction.guild.id
+
+    if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
+        await interaction.response.send_message("❌ I'm not playing anything right now!")
+        return
+    
+    if level < 0 or level > 100:
+        await interaction.response.send_message("❌ Volume must be between 0 and 100!")
+        return
+    
+    try:
+        voice_client = client.guild_voice_clients[guild_id]
+        if hasattr(voice_client.source, 'volume'):
+            voice_client.source.volume = level / 100.0
+            await interaction.response.send_message(f"🔊 Volume set to {level}%")
+        else:
+            await interaction.response.send_message("❌ Cannot adjust volume for current source!")
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to set volume: {str(e)}")
+
+
 
 @client.tree.command(name="config", description="Configure the music channel")
 async def config(interaction: discord.Interaction, channel: discord.TextChannel = None):
