@@ -120,7 +120,6 @@ async def playsong(interaction: discord.Interaction, url: str):
         
     guild_id = interaction.guild.id
     
-
     try:
         source = await get_audio_source(url)
     except Exception as e:
@@ -131,6 +130,7 @@ async def playsong(interaction: discord.Interaction, url: str):
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
         try:
+            # Define the voice_channel variable here
             voice_channel = interaction.user.voice.channel
             voice_client = await voice_channel.connect()
             client.guild_voice_clients[guild_id] = voice_client
@@ -138,16 +138,15 @@ async def playsong(interaction: discord.Interaction, url: str):
             await interaction.followup.send(f"Error connecting to voice channel: {str(e)}")
             return
     
-
     client.music_queue.append(song)
-    
 
     if guild_id not in client.currently_playing or client.currently_playing[guild_id] is None:
         await play_next(guild_id)
         await interaction.followup.send(f"🎵 Now playing: **{song.title}**")
     else:
-        await interaction.followup.send(f"🎵 Added to queue: **{song.title}**")
+        await interaction.followup.send(f"🎵 Added to queue: **{song.title}**"
 
+                                        
 @client.tree.command(name="playfile", description="Play a file from attachment")
 async def playfile(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
