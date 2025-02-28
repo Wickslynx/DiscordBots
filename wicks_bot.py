@@ -268,33 +268,33 @@ async def play(interaction: discord.Interaction, url: str):
         await interaction.followup.send(f"🎵 Added to queue (#{position}): **{song.title}**")
 
 @client.tree.command(name="playfile", description="Play a file from attachment")
-async def playfile(interaction: discord.Interaction):
+@app_commands.describe(file="Uploaded audio file")
+async def playfile(interaction: discord.Interaction, file: discord.Attachment = None):
     await interaction.response.defer(thinking=True)
     
     if not interaction.user.voice:
         await interaction.followup.send("❌ You need to be in a voice channel to use this command!")
         return
 
-    if not interaction.message or not interaction.message.attachments:
+    if not file:
         await interaction.followup.send("❌ Please attach an audio file to your message!")
         return
         
     guild_id = interaction.guild.id
-    attachment = interaction.message.attachments[0]
     
     # Check if the attachment is an audio file
-    if not any(attachment.filename.endswith(ext) for ext in ['.mp3', '.wav', '.ogg', '.m4a']):
+    if not any(file.filename.endswith(ext) for ext in ['.mp3', '.wav', '.ogg', '.m4a']):
         await interaction.followup.send("❌ Please upload an audio file (mp3, wav, ogg, m4a)!")
         return
     
     source = {
-        'title': attachment.filename,
-        'url': attachment.url,
+        'title': file.filename,
+        'url': file.url,
         'duration': 0,  # Duration unknown for attachments
         'thumbnail': None
     }
     
-    song = Media(attachment.filename, attachment.url, interaction.user, source)
+    song = Media(file.filename, file.url, interaction.user, source)
     
     # Connect to voice channel if not already connected
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
