@@ -21,11 +21,12 @@ class Bot(commands.Bot):
         )
         self.reaction_role_message_id = None
         self.role_emoji_map = {
-            "🔴": None,  # These will be set when reaction_role command is used
-            "🔵": None,
-            "🟢": None,
-            "🟡": None
+            "🎉": None,                        
+            "📢": None,                   
+            "🎮": None,              
+            "💀": None
         }
+
     
     async def setup_hook(self):
         await self.tree.sync()
