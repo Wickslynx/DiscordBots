@@ -136,10 +136,10 @@ async def on_ready():
     guild = bot.get_guild(1223694900084867247)  # Replace with your guild ID
     if guild:
         bot.role_emoji_map = {
-            "🔴": ROLE_RED_ID,
-            "🔵": ROLE_BLUE_ID,
-            "🟢": ROLE_GREEN_ID,
-            "🟡": ROLE_YELLOW_ID
+            "🎉": ROLE_RED_ID,
+            "📢": ROLE_BLUE_ID,
+            "🎮": ROLE_GREEN_ID,
+            "💀": ROLE_YELLOW_ID
         }
     
     await bot.change_presence(
@@ -236,21 +236,21 @@ async def on_raw_reaction_remove(payload):
 async def reaction_role(interaction: discord.Interaction, red_role: discord.Role = None, blue_role: discord.Role = None, green_role: discord.Role = None, yellow_role: discord.Role = None):
     # Update the role IDs based on provided roles or default to predefined IDs
     if red_role:
-        bot.role_emoji_map["🔴"] = red_role.id
+        bot.role_emoji_map["🎉"] = red_role.id
     if blue_role:
-        bot.role_emoji_map["🔵"] = blue_role.id
+        bot.role_emoji_map["📢"] = blue_role.id
     if green_role:
-        bot.role_emoji_map["🟢"] = green_role.id
+        bot.role_emoji_map["🎮"] = green_role.id
     if yellow_role:
-        bot.role_emoji_map["🟡"] = yellow_role.id
+        bot.role_emoji_map["💀"] = yellow_role.id
     
     # Get role objects
     guild = interaction.guild
     roles = {
-        "🔴": guild.get_role(bot.role_emoji_map["🔴"]),
-        "🔵": guild.get_role(bot.role_emoji_map["🔵"]),
-        "🟢": guild.get_role(bot.role_emoji_map["🟢"]),
-        "🟡": guild.get_role(bot.role_emoji_map["🟡"])
+        "🎉": guild.get_role(bot.role_emoji_map["🎉"]),
+        "📢": guild.get_role(bot.role_emoji_map["📢"]),
+        "🎮": guild.get_role(bot.role_emoji_map["🎮"]),
+        "💀": guild.get_role(bot.role_emoji_map["💀"])
     }
     
     # Create description with actual role names
@@ -273,21 +273,20 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
         
         # Save the reaction role data
         save_reaction_role_data(message.id, {
-            "🔴": bot.role_emoji_map["🔴"],
-            "🔵": bot.role_emoji_map["🔵"],
-            "🟢": bot.role_emoji_map["🟢"],
-            "🟡": bot.role_emoji_map["🟡"]
+            "🎉": bot.role_emoji_map["🎉"],
+            "📢": bot.role_emoji_map["📢"],
+            "🎮": bot.role_emoji_map["🎮"],
+            "💀": bot.role_emoji_map["💀"]
         })
             
-        await message.add_reaction("🔴")
-        await message.add_reaction("🔵")
-        await message.add_reaction("🟢")
-        await message.add_reaction("🟡")
+        await message.add_reaction("🎉")
+        await message.add_reaction("📢")
+        await message.add_reaction("🎮")
+        await message.add_reaction("💀")
         await interaction.response.send_message("Reaction roles added successfully!", ephemeral=True)
         
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
-
 
 
 #Request command.
