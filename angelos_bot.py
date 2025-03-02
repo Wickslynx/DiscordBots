@@ -10,6 +10,7 @@ from datetime import datetime, time
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
+intents.reactions = True  # Make sure reactions intent is enabled
 
 class Bot(commands.Bot):
     def __init__(self):
@@ -18,10 +19,27 @@ class Bot(commands.Bot):
             intents=intents,
             application_id='1336770228134088846'
         )
+        self.reaction_role_message_id = None
+        self.role_emoji_map = {
+            "🔴": None,  # These will be set when reaction_role command is used
+            "🔵": None,
+            "🟢": None,
+            "🟡": None
+        }
     
     async def setup_hook(self):
         await self.tree.sync()
         print("Commands synced globally")
+        
+        # Load saved reaction role data if it exists
+        try:
+            with open('storage/reaction_roles.json', 'r') as file:
+                data = json.load(file)
+                self.reaction_role_message_id = data.get('message_id')
+                # We'll set the actual role objects when on_ready runs
+                self.role_emoji_map = data.get('roles', self.role_emoji_map)
+        except FileNotFoundError:
+            print("No reaction role data found. It will be created when the command is used.")
 
     @tasks.loop(time=time(0, 0))  # (00:00)
     async def daily_check(self):
@@ -52,8 +70,6 @@ class Bot(commands.Bot):
                 except:
                     print(f"Could not process end of LOA for user {user_id}")
         
-        
-        
     @daily_check.before_loop
     async def before_daily_check(self):
         await self.wait_until_ready()
@@ -70,7 +86,7 @@ INFRACTIONS_CHANNEL_ID = 1307758472179355718
 PROMOTIONS_CHANNEL_ID = 1310272690434736158 
 SUGGEST_CHANNEL_ID = 1223930187868016670
 RETIREMENTS_CHANNEL_ID = 1337106483862831186
-TRAINING_CHANNEL_ID =1312742612658163735
+TRAINING_CHANNEL_ID = 1312742612658163735
 INTERNAL_AFFAIRS_ID = 1308094201262637056
 LOA_CHANNEL_ID = 1308084741009838241
 OT_ID = 1223922259727483003
@@ -78,6 +94,13 @@ STAFF_TEAM_ID = 1223920619993956372
 AWAITING_TRAINING_ID = 1309972134604308500
 LOA_ID = 1322405982462017546
 HR_ID = 1309973478539268136
+REACTION_ID = 1309877009815572501  # Same as REQUEST_CHANNEL_ID for now
+
+# Define role IDs for reactions
+ROLE_RED_ID = 1336748921153912974
+ROLE_BLUE_ID = 1312376313167745125
+ROLE_GREEN_ID = 1336749372192325664
+ROLE_YELLOW_ID = 1336749415440060489
 
 # Helper functions 
 async def get_channel_by_id(guild, channel_id):
@@ -94,12 +117,29 @@ def load_loa_data():
     except FileNotFoundError:
         return {}
 
-
+def save_reaction_role_data(message_id, role_emoji_map):
+    """Save reaction role message ID and role mappings"""
+    data = {
+        'message_id': message_id,
+        'roles': role_emoji_map
+    }
+    with open('storage/reaction_roles.json', 'w') as file:
+        json.dump(data, file, indent=4)
 
 # Bot setup.
 @bot.event
 async def on_ready():
     print(f'Bot logged in as {bot.user}')
+    
+    # Set up the role objects based on IDs
+    guild = bot.get_guild(1223694900084867247)  # Replace with your guild ID
+    if guild:
+        bot.role_emoji_map = {
+            "🔴": ROLE_RED_ID,
+            "🔵": ROLE_BLUE_ID,
+            "🟢": ROLE_GREEN_ID,
+            "🟡": ROLE_YELLOW_ID
+        }
     
     await bot.change_presence(
         activity=discord.Activity(
@@ -138,11 +178,122 @@ async def on_member_remove(member):
         embed.add_field(name="Member Count", value=str(member.guild.member_count))
         await channel.send(embed=embed)
 
+# Handle reaction roles
+@bot.event
+async def on_raw_reaction_add(payload):
+    # Check if the reaction is on our reaction role message
+    if payload.message_id != bot.reaction_role_message_id:
+        return
+    
+    # Ignore bot's own reactions
+    if payload.user_id == bot.user.id:
+        return
+    
+    guild = bot.get_guild(payload.guild_id)
+    if not guild:
+        return
+    
+    emoji = str(payload.emoji)
+    if emoji in bot.role_emoji_map:
+        role_id = bot.role_emoji_map[emoji]
+        role = guild.get_role(role_id)
+        if role:
+            member = guild.get_member(payload.user_id)
+            if member:
+                await member.add_roles(role)
+                try:
+                    await member.send(f"You have been given the {role.name} role!")
+                except:
+                    pass  # Cannot send DM
+
+@bot.event
+async def on_raw_reaction_remove(payload):
+    # Check if the reaction is on our reaction role message
+    if payload.message_id != bot.reaction_role_message_id:
+        return
+    
+    guild = bot.get_guild(payload.guild_id)
+    if not guild:
+        return
+    
+    emoji = str(payload.emoji)
+    if emoji in bot.role_emoji_map:
+        role_id = bot.role_emoji_map[emoji]
+        role = guild.get_role(role_id)
+        if role:
+            member = guild.get_member(payload.user_id)
+            if member:
+                await member.remove_roles(role)
+                try:
+                    await member.send(f"Your {role.name} role has been removed!")
+                except:
+                    pass  # Cannot send DM
+
+# Improved reaction_role command
+@bot.tree.command(name="reaction_role", description="Set up reaction roles")
+@commands.has_permissions(administrator=True)
+async def reaction_role(interaction: discord.Interaction, red_role: discord.Role = None, blue_role: discord.Role = None, green_role: discord.Role = None, yellow_role: discord.Role = None):
+    # Update the role IDs based on provided roles or default to predefined IDs
+    if red_role:
+        bot.role_emoji_map["🔴"] = red_role.id
+    if blue_role:
+        bot.role_emoji_map["🔵"] = blue_role.id
+    if green_role:
+        bot.role_emoji_map["🟢"] = green_role.id
+    if yellow_role:
+        bot.role_emoji_map["🟡"] = yellow_role.id
+    
+    # Get role objects
+    guild = interaction.guild
+    roles = {
+        "🔴": guild.get_role(bot.role_emoji_map["🔴"]),
+        "🔵": guild.get_role(bot.role_emoji_map["🔵"]),
+        "🟢": guild.get_role(bot.role_emoji_map["🟢"]),
+        "🟡": guild.get_role(bot.role_emoji_map["🟡"])
+    }
+    
+    # Create description with actual role names
+    description = "React to this message to get roles:\n\n"
+    for emoji, role in roles.items():
+        role_name = role.name if role else "Not set"
+        description += f"{emoji} - {role_name}\n"
+    
+    channel = await get_channel_by_id(interaction.guild, REQUEST_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(
+            title="Role Selection",
+            description=description,
+            color=discord.Color.purple(),
+            timestamp=datetime.utcnow()
+        )
+
+        message = await channel.send(embed=embed)
+        bot.reaction_role_message_id = message.id
+        
+        # Save the reaction role data
+        save_reaction_role_data(message.id, {
+            "🔴": bot.role_emoji_map["🔴"],
+            "🔵": bot.role_emoji_map["🔵"],
+            "🟢": bot.role_emoji_map["🟢"],
+            "🟡": bot.role_emoji_map["🟡"]
+        })
+            
+        await message.add_reaction("🔴")
+        await message.add_reaction("🔵")
+        await message.add_reaction("🟢")
+        await message.add_reaction("🟡")
+        await interaction.response.send_message("Reaction roles added successfully!", ephemeral=True)
+        
+    else:
+        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
+
+
+
 #Request command.
 @bot.tree.command(name="request", description="Request more staff to the server")
 async def request(interaction: discord.Interaction):
     
-    channel = await get_channel_by_id(interaction.guild, REQUEST_CHANNEL_ID)
+    channel = await get_channel_by_id(interaction.guild, REACTION_ID)
     if channel:
         embed = discord.Embed(
             title="Staff request",
