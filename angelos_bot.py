@@ -95,11 +95,6 @@ class VoteView(discord.ui.View):
 
 class Bot(commands.Bot):
     def __init__(self):
-        super().__init__(
-            command_prefix='/',
-            intents=intents,
-            application_id='1336770228134088846'
-        )
        self.reaction_role_message_id = None
        self.role_emoji_map = {
             "🎉": None,                        
@@ -107,6 +102,12 @@ class Bot(commands.Bot):
             "🎮": None,              
             "💀": None
         }
+            
+        super().__init__(
+            command_prefix='/',
+            intents=intents,
+            application_id='1336770228134088846'
+        )
 
     async def setup_hook(self):
         # Register the persistent view
