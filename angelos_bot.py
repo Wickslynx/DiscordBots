@@ -6,16 +6,15 @@ import os
 from discord.ext import tasks
 from pathlib import Path
 
-# Ensure storage directory exists
+
 Path("storage").mkdir(exist_ok=True)
         
 # Bot config.
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
-intents.reactions = True  # Make sure reactions intent is enabled
+intents.reactions = True  
 
-# Persistent view for reaction role buttons
 class ReactionButtons(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
