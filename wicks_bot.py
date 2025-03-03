@@ -105,17 +105,15 @@ def handle_playback_error(error, guild_id):
 async def playsong(interaction: discord.Interaction, url: str):
     await interaction.response.defer(thinking=True)
 
-    if not interaction.user.voice and not interaction.guild.get_member(interaction.user.id).voice:
-        
-        try:
-            member = await interaction.guild.fetch_member(interaction.user.id)
-            voice_state = member.voice
-            if not voice_state:
-                await interaction.followup.send("You need to be in a voice channel to use this command!")
-                return
-        except:
-            await interaction.followup.send("You need to be in a voice channel to use this command!")
-            return
+    for state in interaction.guild.voice_states.values():
+        if state.user.id == interaction.user.id:
+            member_in_voice = True
+            voice_channel = state.channel
+            break
+    
+    if not member_in_voice or voice_channel is None:
+        await interaction.followup.send("You need to be in a voice channel to use this command!")
+        return
 
     guild_id = interaction.guild.id
 
