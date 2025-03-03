@@ -105,6 +105,10 @@ def handle_playback_error(error, guild_id):
 async def playsong(interaction: discord.Interaction, url: str):
     await interaction.response.defer(thinking=True)
 
+    if not interaction.guild:
+        await interaction.followup.send("This command can only be used in a server!")
+        return
+
     try:
         member = await interaction.guild.fetch_member(interaction.user.id)
         if not member.voice or not member.voice.channel:
