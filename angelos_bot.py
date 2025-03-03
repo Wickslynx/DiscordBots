@@ -376,9 +376,9 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
     channel = await get_channel_by_id(interaction.guild, REACTION_ID)
     if channel:
         embed = discord.Embed(
-            title="Role Selection",
+            title="Reaction roles!",
             description=description,
-            color=discord.Color.purple(),
+            color=discord.Color.white(),
             timestamp=datetime.utcnow()
         )
 
