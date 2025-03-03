@@ -100,8 +100,8 @@ class Bot(commands.Bot):
             intents=intents,
             application_id='1336770228134088846'
         )
-        self.reaction_role_message_id = None
-        self.role_emoji_map = {
+       self.reaction_role_message_id = None
+       self.role_emoji_map = {
             "🎉": None,                        
             "📢": None,                   
             "🎮": None,              
