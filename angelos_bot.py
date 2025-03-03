@@ -95,19 +95,19 @@ class VoteView(discord.ui.View):
 
 class Bot(commands.Bot):
     def __init__(self):
-       self.reaction_role_message_id = None
-       self.role_emoji_map = {
+      self.reaction_role_message_id = None
+      self.role_emoji_map = {
             "🎉": None,                        
             "📢": None,                   
             "🎮": None,              
             "💀": None
-        }
+      }
             
-        super().__init__(
+      super().__init__(
             command_prefix='/',
             intents=intents,
             application_id='1336770228134088846'
-        )
+      )
 
     async def setup_hook(self):
         # Register the persistent view
@@ -248,7 +248,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="over the server"
+            name="Join Los Angelos Roleplay today!"
         )
     )
 
@@ -378,7 +378,7 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
         embed = discord.Embed(
             title="Reaction roles!",
             description=description,
-            color=discord.Color.white(),
+            color=discord.Color.black(),
             timestamp=datetime.utcnow()
         )
 
