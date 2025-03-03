@@ -366,7 +366,7 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
         role_name = role.name if role else "Not set"
         description += f"{emoji} - {role_name}\n"
     
-    channel = await get_channel_by_id(interaction.guild, REQUEST_CHANNEL_ID)
+    channel = await get_channel_by_id(interaction.guild, REACTION_ID)
     if channel:
         embed = discord.Embed(
             title="Role Selection",
