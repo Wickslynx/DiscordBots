@@ -388,11 +388,11 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
         
         # Add reactions
         await message.add_reaction("🎉")
-        await discord.asyncio.sleep(0.5)
+        #await discord.asyncio.sleep(0.5)
         await message.add_reaction("📢")
-        await discord.asyncio.sleep(0.5)
+        #await discord.asyncio.sleep(0.5)
         await message.add_reaction("🎮")
-        await discord.asyncio.sleep(0.5)
+        #await discord.asyncio.sleep(0.5)
         await message.add_reaction("💀")
         
         await interaction.response.send_message("Reaction roles added successfully!", ephemeral=True)
