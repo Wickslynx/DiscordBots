@@ -17,6 +17,7 @@ intents.reactions = True
 
 class ReactionButtons(discord.ui.View):
     def __init__(self):
+            
         super().__init__(timeout=None)
         
     @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa")
@@ -95,19 +96,19 @@ class VoteView(discord.ui.View):
 
 class Bot(commands.Bot):
     def __init__(self):
-      self.reaction_role_message_id = None
-      self.role_emoji_map = {
-            "🎉": None,                        
-            "📢": None,                   
-            "🎮": None,              
-            "💀": None
-      }
+              self.reaction_role_message_id = None
+              self.role_emoji_map = {
+                    "🎉": None,                        
+                    "📢": None,                   
+                    "🎮": None,              
+                    "💀": None
+              }
             
-      super().__init__(
-            command_prefix='/',
-            intents=intents,
-            application_id='1336770228134088846'
-      )
+              super().__init__(
+                    command_prefix='/',
+                    intents=intents,
+                    application_id='1336770228134088846'
+              )
 
     async def setup_hook(self):
         # Register the persistent view
