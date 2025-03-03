@@ -336,10 +336,17 @@ async def on_raw_reaction_remove(payload):
 # Improved reaction_role command
 @bot.tree.command(name="reaction_role", description="Set up reaction roles")
 async def reaction_role(interaction: discord.Interaction, red_role: discord.Role = None, blue_role: discord.Role = None, green_role: discord.Role = None, yellow_role: discord.Role = None):
-    # Check permissions first
+     #Check perms.
+    role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+        return
+            
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
         return
+
+    
         
     # Update the role IDs
     if red_role:
