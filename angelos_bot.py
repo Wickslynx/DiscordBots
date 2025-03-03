@@ -236,7 +236,7 @@ async def on_ready():
     print(f'Bot logged in as {bot.user}')
     
     # Set up the role objects based on IDs
-    guild = bot.get_guild()  
+    guild = bot.get_guild(1223694900084867247)  
     if guild:
         bot.role_emoji_map = {
             "🎉": ROLE_RED_ID,
