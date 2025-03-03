@@ -1,16 +1,98 @@
 import discord
 from discord.ext import commands
-from datetime import datetime
-import json
-from discord.ext import tasks
 from datetime import datetime, time
+import json
+import os
+from discord.ext import tasks
+from pathlib import Path
 
+# Ensure storage directory exists
+Path("storage").mkdir(exist_ok=True)
         
 # Bot config.
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 intents.reactions = True  # Make sure reactions intent is enabled
+
+# Persistent view for reaction role buttons
+class ReactionButtons(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        
+    @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa")
+    async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message("You don't have permission to approve LOA requests!", ephemeral=True)
+            return
+            
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        embed.add_field(name="Status", value=f"Approved by {interaction.user.mention}", inline=False)
+        
+        
+        user_field = discord.utils.get(embed.fields, name="Staff Member")
+        start_date_field = discord.utils.get(embed.fields, name="Start Date")
+        end_date_field = discord.utils.get(embed.fields, name="End Date")
+        
+        if all([user_field, start_date_field, end_date_field]):
+            user_id = ''.join(filter(str.isdigit, user_field.value))
+            start_date = datetime.strptime(start_date_field.value, "%B %d, %Y").strftime('%Y-%m-%d')
+            end_date = datetime.strptime(end_date_field.value, "%B %d, %Y").strftime('%Y-%m-%d')
+            
+            loa_data = load_loa_data()
+            loa_data[user_id] = {
+                'start_date': start_date,
+                'end_date': end_date
+            }
+            save_loa_data(loa_data)
+
+            try:
+                member = interaction.guild.get_member(int(user_id))
+                if member:
+                    await member.add_roles(interaction.guild.get_role(LOA_ID))
+            except Exception as e:
+                await interaction.followup.send(f"Failed to add LOA role: {str(e)}", ephemeral=True)
+
+        # Disable buttons
+        for item in self.children:
+            item.disabled = True
+        
+        await interaction.message.edit(embed=embed, view=self)
+        await interaction.response.send_message("LOA request approved!", ephemeral=True)
+
+    @discord.ui.button(label="Deny", style=discord.ButtonStyle.red, custom_id="deny_loa")
+    async def deny_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
+        if role not in interaction.user.roles:
+            await interaction.response.send_message("You don't have permission to deny LOA requests!", ephemeral=True)
+            return
+
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.red()
+        embed.add_field(name="Status", value=f"Denied by {interaction.user.mention}", inline=False)
+
+        # Disable buttons
+        for item in self.children:
+            item.disabled = True
+
+        await interaction.message.edit(embed=embed, view=self)
+        await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
+
+# Vote buttons view
+class VoteView(discord.ui.View):
+    def __init__(self, message_id=None):
+        super().__init__(timeout=None)
+        self.message_id = message_id
+        
+    @discord.ui.button(label="✔️ 0", style=discord.ButtonStyle.success, custom_id="upvote")
+    async def upvote_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await handle_upvote(interaction, self)
+        
+    @discord.ui.button(label="🗙 0", style=discord.ButtonStyle.danger, custom_id="downvote")
+    async def downvote_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await handle_downvote(interaction, self)
 
 class Bot(commands.Bot):
     def __init__(self):
@@ -27,8 +109,22 @@ class Bot(commands.Bot):
             "💀": None
         }
 
-    
     async def setup_hook(self):
+        # Register the persistent view
+        self.add_view(ReactionButtons())
+        
+        # Start the daily check loop
+        self.daily_check.start()
+        
+        # Load vote counts if exists
+        global vote_counts
+        try:
+            with open('storage/vote_counts.json', 'r') as file:
+                vote_counts = json.load(file)
+        except FileNotFoundError:
+            vote_counts = {}
+            
+        # Sync commands
         await self.tree.sync()
         print("Commands synced globally")
         
@@ -52,8 +148,8 @@ class Bot(commands.Bot):
                 try:
                     user = await self.fetch_user(int(user_id))
                     await user.send(f"Your LOA period has started today and will end on {info['end_date']}")
-                except:
-                    print(f"Could not send start notification to user {user_id}")
+                except Exception as e:
+                    print(f"Could not send start notification to user {user_id}: {str(e)}")
 
     
             if info['end_date'] == today:
@@ -68,8 +164,8 @@ class Bot(commands.Bot):
                             await member.remove_roles(guild.get_role(LOA_ID))
                     del loa_data[user_id]
                     save_loa_data(loa_data)
-                except:
-                    print(f"Could not process end of LOA for user {user_id}")
+                except Exception as e:
+                    print(f"Could not process end of LOA for user {user_id}: {str(e)}")
         
     @daily_check.before_loop
     async def before_daily_check(self):
@@ -103,6 +199,9 @@ ROLE_BLUE_ID = 1312376313167745125
 ROLE_GREEN_ID = 1336749372192325664
 ROLE_YELLOW_ID = 1336749415440060489
 
+# Global variable for vote tracking
+vote_counts = {}
+
 # Helper functions 
 async def get_channel_by_id(guild, channel_id):
     return guild.get_channel(channel_id)
@@ -117,6 +216,10 @@ def load_loa_data():
             return json.load(file)
     except FileNotFoundError:
         return {}
+
+def save_vote_counts():
+    with open('storage/vote_counts.json', 'w') as file:
+        json.dump(vote_counts, file, indent=4)
 
 def save_reaction_role_data(message_id, role_emoji_map):
     """Save reaction role message ID and role mappings"""
@@ -133,7 +236,7 @@ async def on_ready():
     print(f'Bot logged in as {bot.user}')
     
     # Set up the role objects based on IDs
-    guild = bot.get_guild(1223694900084867247)  # Replace with your guild ID
+    guild = bot.get_guild()  
     if guild:
         bot.role_emoji_map = {
             "🎉": ROLE_RED_ID,
@@ -204,7 +307,7 @@ async def on_raw_reaction_add(payload):
                 await member.add_roles(role)
                 try:
                     await member.send(f"You have been given the {role.name} role!")
-                except:
+                except discord.HTTPException:
                     pass  # Cannot send DM
 
 @bot.event
@@ -227,14 +330,18 @@ async def on_raw_reaction_remove(payload):
                 await member.remove_roles(role)
                 try:
                     await member.send(f"Your {role.name} role has been removed!")
-                except:
+                except discord.HTTPException:
                     pass  # Cannot send DM
 
 # Improved reaction_role command
 @bot.tree.command(name="reaction_role", description="Set up reaction roles")
-@commands.has_permissions(administrator=True)
 async def reaction_role(interaction: discord.Interaction, red_role: discord.Role = None, blue_role: discord.Role = None, green_role: discord.Role = None, yellow_role: discord.Role = None):
-    # Update the role IDs based on provided roles or default to predefined IDs
+    # Check permissions first
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+        return
+        
+    # Update the role IDs
     if red_role:
         bot.role_emoji_map["🎉"] = red_role.id
     if blue_role:
@@ -253,7 +360,7 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
         "💀": guild.get_role(bot.role_emoji_map["💀"])
     }
     
-    # Create description with actual role names
+
     description = "React to this message to get roles:\n\n"
     for emoji, role in roles.items():
         role_name = role.name if role else "Not set"
@@ -278,11 +385,16 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
             "🎮": bot.role_emoji_map["🎮"],
             "💀": bot.role_emoji_map["💀"]
         })
-            
+        
+        # Add reactions
         await message.add_reaction("🎉")
+        await discord.asyncio.sleep(0.5)
         await message.add_reaction("📢")
+        await discord.asyncio.sleep(0.5)
         await message.add_reaction("🎮")
+        await discord.asyncio.sleep(0.5)
         await message.add_reaction("💀")
+        
         await interaction.response.send_message("Reaction roles added successfully!", ephemeral=True)
         
     else:
@@ -334,34 +446,37 @@ async def training_request(interaction: discord.Interaction):
 
 @bot.tree.command(name="ban", description="Ban a member from the server.")
 async def ban(interaction: discord.Interaction, member: discord.Member, *, reason: str = None):
+    # Check permissions first
     role = discord.utils.get(interaction.guild.roles, id=HR_ID)
-    if role not in interaction.user.roles:
-        role = discord.utils.get(interaction.guild.roles, id=OT_ID)
-        if role not in interaction.user.roles:
-            await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
-            return
+    role_ot = discord.utils.get(interaction.guild.roles, id=OT_ID)
+    
+    if role not in interaction.user.roles and role_ot not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+        return
         
     try:
         await member.ban(reason=reason)
         await interaction.response.send_message(f"{member.mention} has been banned from the server.", ephemeral=True)
     except discord.Forbidden:
         await interaction.response.send_message("I do not have permission to ban this user.", ephemeral=True)
-    except discord.HTTPException:
-        await interaction.response.send_message("An error occurred while trying to ban this user.", ephemeral=True)
+    except discord.HTTPException as e:
+        await interaction.response.send_message(f"An error occurred while trying to ban this user: {str(e)}", ephemeral=True)
             
 @bot.tree.command(name="say", description="Make the bot say a message.")
 async def say(interaction: discord.Interaction, message: str):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
     if role in interaction.user.roles:
+        await interaction.response.send_message("Message sent!", ephemeral=True)
         await interaction.channel.send(message)
-        pass
     else:
         await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
 
-vote_counts = {}
-
-async def handle_upvote(interaction: discord.Interaction):
-    message_id = str(interaction.message.id)
+# Updated vote handling functions
+async def handle_upvote(interaction: discord.Interaction, view: VoteView):
+    if not view.message_id:
+        view.message_id = str(interaction.message.id)
+    
+    message_id = view.message_id
     user_id = str(interaction.user.id)
     
     if message_id not in vote_counts:
@@ -377,28 +492,23 @@ async def handle_upvote(interaction: discord.Interaction):
         vote_counts[message_id]["upvotes"] += 1
         vote_counts[message_id]["voted_users"][user_id] = "up"
     
-    view = discord.ui.View(timeout=None)
-    upvote_button = discord.ui.Button(
-        style=discord.ButtonStyle.success, 
-        label=f"✔️ {vote_counts[message_id]['upvotes']}", 
-        custom_id="upvote"
-    )
-    downvote_button = discord.ui.Button(
-        style=discord.ButtonStyle.danger, 
-        label=f"🗙 {vote_counts[message_id]['downvotes']}", 
-        custom_id="downvote"
-    )
+    # Update button labels
+    for child in view.children:
+        if child.custom_id == "upvote":
+            child.label = f"✔️ {vote_counts[message_id]['upvotes']}"
+        elif child.custom_id == "downvote":
+            child.label = f"🗙 {vote_counts[message_id]['downvotes']}"
     
-    upvote_button.callback = handle_upvote
-    downvote_button.callback = handle_downvote
-    
-    view.add_item(upvote_button)
-    view.add_item(downvote_button)
+    # Save vote counts
+    save_vote_counts()
     
     await interaction.response.edit_message(view=view)
 
-async def handle_downvote(interaction: discord.Interaction):
-    message_id = str(interaction.message.id)
+async def handle_downvote(interaction: discord.Interaction, view: VoteView):
+    if not view.message_id:
+        view.message_id = str(interaction.message.id)
+    
+    message_id = view.message_id
     user_id = str(interaction.user.id)
     
     if message_id not in vote_counts:
@@ -414,23 +524,15 @@ async def handle_downvote(interaction: discord.Interaction):
         vote_counts[message_id]["downvotes"] += 1
         vote_counts[message_id]["voted_users"][user_id] = "down"
     
-    view = discord.ui.View(timeout=None)
-    upvote_button = discord.ui.Button(
-        style=discord.ButtonStyle.success, 
-        label=f"✔️ {vote_counts[message_id]['upvotes']}", 
-        custom_id="upvote"
-    )
-    downvote_button = discord.ui.Button(
-        style=discord.ButtonStyle.danger, 
-        label=f"🗙 {vote_counts[message_id]['downvotes']}", 
-        custom_id="downvote"
-    )
+    # Update button labels
+    for child in view.children:
+        if child.custom_id == "upvote":
+            child.label = f"✔️ {vote_counts[message_id]['upvotes']}"
+        elif child.custom_id == "downvote":
+            child.label = f"🗙 {vote_counts[message_id]['downvotes']}"
     
-    upvote_button.callback = handle_upvote
-    downvote_button.callback = handle_downvote
-    
-    view.add_item(upvote_button)
-    view.add_item(downvote_button)
+    # Save vote counts
+    save_vote_counts()
     
     await interaction.response.edit_message(view=view)
 
@@ -446,26 +548,18 @@ async def suggest(interaction: discord.Interaction, suggestion: str):
         )
         embed.set_footer(text=f"**Suggested by {interaction.user.name}**")
         
-        view = discord.ui.View(timeout=None)
-        upvote_button = discord.ui.Button(
-            style=discord.ButtonStyle.success, 
-            label="✔️ 0", 
-            custom_id="upvote"
-        )
-        downvote_button = discord.ui.Button(
-            style=discord.ButtonStyle.danger, 
-            label="🗙 0", 
-            custom_id="downvote"
-        )
         
-        upvote_button.callback = handle_upvote
-        downvote_button.callback = handle_downvote
+        view = VoteView()
         
-        view.add_item(upvote_button)
-        view.add_item(downvote_button)
-        
-        await channel.send(embed=embed, view=view)
         await interaction.response.send_message("Suggestion submitted!", ephemeral=True)
+        sent_message = await channel.send(embed=embed, view=view)
+        
+        # Set the message ID for the view
+        view.message_id = str(sent_message.id)
+        
+        # Initialize in vote_counts
+        vote_counts[view.message_id] = {"upvotes": 0, "downvotes": 0, "voted_users": {}}
+        save_vote_counts()
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
             
