@@ -22,14 +22,19 @@ ydl_opts = {
 class MusicClient(discord.Client):
     def __init__(self):
         super().__init__(intents=intents)
+        # Create command tree once
         self.tree = app_commands.CommandTree(self)
         self.music_queue = deque()
         self.guild_voice_clients = {}
         self.music_channels = {}
         self.currently_playing = {}
+        self.synced = False  # Track if commands have been synced
 
     async def setup_hook(self):
-        await self.tree.sync()
+        # This is called when the bot starts up
+        # We'll only sync commands from here to prevent 
+        # the "Unknown Integration" error
+        pass
 
 class Song:
     def __init__(self, title, url, requested_by, source=None):
@@ -43,6 +48,13 @@ client = MusicClient()
 @client.event
 async def on_ready():
     print(f'Logged in as {client.user}')
+    
+    # Sync commands only if they haven't been synced yet
+    if not client.synced:
+        # Global sync - can take up to an hour to propagate
+        await client.tree.sync()
+        print("Command tree synced globally")
+        client.synced = True
 
 async def get_audio_source(url, interaction=None):
     try:
@@ -61,7 +73,8 @@ async def get_audio_source(url, interaction=None):
 
 async def play_next(guild_id):
     if not client.music_queue:
-        client.currently_playing[guild_id] = None
+        if guild_id in client.currently_playing:
+            client.currently_playing[guild_id] = None
         return
         
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
@@ -93,7 +106,6 @@ async def play_next(guild_id):
 
     except Exception as e:
         print(f"Error playing song: {str(e)}")
-        # Removed incorrect reference to interaction
         asyncio.run_coroutine_threadsafe(play_next(guild_id), client.loop)
 
 def handle_playback_error(error, guild_id):
@@ -102,6 +114,7 @@ def handle_playback_error(error, guild_id):
     asyncio.run_coroutine_threadsafe(play_next(guild_id), client.loop)
 
 @client.tree.command(name="playsong", description="Play a song from YouTube URL")
+@app_commands.describe(url="YouTube URL of the song to play")
 async def playsong(interaction: discord.Interaction, url: str):
     await interaction.response.defer(thinking=True)
 
@@ -109,21 +122,19 @@ async def playsong(interaction: discord.Interaction, url: str):
         await interaction.followup.send("This command can only be used in a server!")
         return
 
-    # Add this line to define guild_id
     guild_id = interaction.guild.id
 
     try:
-        member = await interaction.guild.fetch_member(interaction.user.id)
-        if not member.voice or not member.voice.channel:
+        # Check if user is in a voice channel
+        if not interaction.user.voice or not interaction.user.voice.channel:
             await interaction.followup.send("You need to be in a voice channel to use this command!")
             return
-        
-        voice_channel = member.voice.channel
+            
+        voice_channel = interaction.user.voice.channel
     except Exception as e:
-        print(f"Error fetching member: {e}")
+        print(f"Error checking voice state: {e}")
         await interaction.followup.send("You need to be in a voice channel to use this command!")
         return
-        
     
     try:
         source = await get_audio_source(url, interaction)
@@ -135,54 +146,6 @@ async def playsong(interaction: discord.Interaction, url: str):
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
         try:
-            voice_client = await voice_channel.connect()
-            client.guild_voice_clients[guild_id] = voice_client
-        except discord.errors.ClientException as e:
-            await interaction.followup.send(f"Error connecting to voice channel: {str(e)}")
-            return
-
-    client.music_queue.append(song)
-
-    if guild_id not in client.currently_playing or client.currently_playing[guild_id] is None:
-        await play_next(guild_id)
-        await interaction.followup.send(f"🎵 Now playing: **{song.title}**")
-    else:
-        await interaction.followup.send(f"🎵 Added to queue: **{song.title}**")
-
-@client.tree.command(name="playfile", description="Play a file from attachment")
-async def playfile(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True)
-
-    if not interaction.guild:
-        await interaction.followup.send("This command can only be used in a server!")
-        return
-
-    guild_id = interaction.guild.id
-
-    if not interaction.user.voice:
-        await interaction.followup.send("You need to be in a voice channel to use this command!")
-        return
-
-    if not interaction.message or not interaction.message.attachments:
-        await interaction.followup.send("Please attach an audio file to your message!")
-        return
-
-    attachment = interaction.message.attachments[0]
-
-    if not any(attachment.filename.endswith(ext) for ext in ['.mp3', '.wav', '.ogg', '.m4a']):
-        await interaction.followup.send("Please upload an audio file (mp3, wav, ogg, m4a)!")
-        return
-
-    source = {
-        'title': attachment.filename,
-        'url': attachment.url
-    }
-
-    song = Song(attachment.filename, attachment.url, interaction.user, source)
-
-    if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
-        try:
-            voice_channel = interaction.user.voice.channel
             voice_client = await voice_channel.connect()
             client.guild_voice_clients[guild_id] = voice_client
         except discord.errors.ClientException as e:
@@ -307,26 +270,6 @@ async def volume(interaction: discord.Interaction, level: int):
     except Exception as e:
         await interaction.response.send_message(f"❌ Failed to set volume: {str(e)}")
 
-@client.tree.command(name="config", description="Configure the music channel")
-async def config(interaction: discord.Interaction, channel: discord.TextChannel = None):
-    if not interaction.guild:
-        await interaction.response.send_message("This command can only be used in a server!")
-        return
-        
-    guild_id = interaction.guild.id
-
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You need administrator permissions to use this command!")
-        return
-
-    if channel:
-        client.music_channels[guild_id] = channel.id
-        await interaction.response.send_message(f"Music notifications will now be sent to {channel.mention}!")
-    else:
-        if guild_id in client.music_channels:
-            del client.music_channels[guild_id]
-        await interaction.response.send_message("Music channel configuration has been reset.")
-
 @client.tree.command(name="queue", description="Show the current music queue")
 async def queue(interaction: discord.Interaction):
     if not interaction.guild:
@@ -376,4 +319,5 @@ async def disconnect(interaction: discord.Interaction):
 
 token = ""
 
+# Run the bot
 client.run(token)
