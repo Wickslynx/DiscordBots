@@ -93,7 +93,7 @@ async def play_next(guild_id):
 
     except Exception as e:
         print(f"Error playing song: {str(e)}")
-        await interaction.followup.send(f"❌ Error playing song: {str(e)}")
+        # Removed incorrect reference to interaction
         asyncio.run_coroutine_threadsafe(play_next(guild_id), client.loop)
 
 def handle_playback_error(error, guild_id):
@@ -101,7 +101,7 @@ def handle_playback_error(error, guild_id):
         print(f"Playback error: {error}")
     asyncio.run_coroutine_threadsafe(play_next(guild_id), client.loop)
 
-client.tree.command(name="playsong", description="Play a song from YouTube URL")
+@client.tree.command(name="playsong", description="Play a song from YouTube URL")
 async def playsong(interaction: discord.Interaction, url: str):
     await interaction.response.defer(thinking=True)
 
@@ -148,10 +148,16 @@ async def playsong(interaction: discord.Interaction, url: str):
         await interaction.followup.send(f"🎵 Now playing: **{song.title}**")
     else:
         await interaction.followup.send(f"🎵 Added to queue: **{song.title}**")
-        
+
 @client.tree.command(name="playfile", description="Play a file from attachment")
 async def playfile(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
+
+    if not interaction.guild:
+        await interaction.followup.send("This command can only be used in a server!")
+        return
+
+    guild_id = interaction.guild.id
 
     if not interaction.user.voice:
         await interaction.followup.send("You need to be in a voice channel to use this command!")
@@ -160,8 +166,6 @@ async def playfile(interaction: discord.Interaction):
     if not interaction.message or not interaction.message.attachments:
         await interaction.followup.send("Please attach an audio file to your message!")
         return
-
-    guild_id = interaction.guild.id
 
     attachment = interaction.message.attachments[0]
 
@@ -195,6 +199,10 @@ async def playfile(interaction: discord.Interaction):
 
 @client.tree.command(name="skip", description="Skip the current song")
 async def skip(interaction: discord.Interaction):
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server!")
+        return
+        
     guild_id = interaction.guild.id
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
@@ -211,6 +219,10 @@ async def skip(interaction: discord.Interaction):
 
 @client.tree.command(name="stop", description="Stop playback and clear the queue")
 async def stop(interaction: discord.Interaction):
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server!")
+        return
+        
     guild_id = interaction.guild.id
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
@@ -226,6 +238,10 @@ async def stop(interaction: discord.Interaction):
 
 @client.tree.command(name="pause", description="Pause the current song")
 async def pause(interaction: discord.Interaction):
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server!")
+        return
+        
     guild_id = interaction.guild.id
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
@@ -244,6 +260,10 @@ async def pause(interaction: discord.Interaction):
 
 @client.tree.command(name="resume", description="Resume the paused song")
 async def resume(interaction: discord.Interaction):
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server!")
+        return
+        
     guild_id = interaction.guild.id
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
@@ -263,6 +283,10 @@ async def resume(interaction: discord.Interaction):
 @client.tree.command(name="volume", description="Set the playback volume (0-100)")
 @app_commands.describe(level="Volume level (0-100)")
 async def volume(interaction: discord.Interaction, level: int):
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server!")
+        return
+        
     guild_id = interaction.guild.id
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
@@ -285,6 +309,10 @@ async def volume(interaction: discord.Interaction, level: int):
 
 @client.tree.command(name="config", description="Configure the music channel")
 async def config(interaction: discord.Interaction, channel: discord.TextChannel = None):
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server!")
+        return
+        
     guild_id = interaction.guild.id
 
     if not interaction.user.guild_permissions.administrator:
@@ -301,6 +329,10 @@ async def config(interaction: discord.Interaction, channel: discord.TextChannel 
 
 @client.tree.command(name="queue", description="Show the current music queue")
 async def queue(interaction: discord.Interaction):
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server!")
+        return
+        
     guild_id = interaction.guild.id
 
     if not client.music_queue and (guild_id not in client.currently_playing or client.currently_playing[guild_id] is None):
@@ -324,6 +356,10 @@ async def queue(interaction: discord.Interaction):
 
 @client.tree.command(name="disconnect", description="Disconnect the bot from voice channel")
 async def disconnect(interaction: discord.Interaction):
+    if not interaction.guild:
+        await interaction.response.send_message("This command can only be used in a server!")
+        return
+        
     guild_id = interaction.guild.id
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
