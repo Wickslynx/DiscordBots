@@ -101,13 +101,16 @@ def handle_playback_error(error, guild_id):
         print(f"Playback error: {error}")
     asyncio.run_coroutine_threadsafe(play_next(guild_id), client.loop)
 
-@client.tree.command(name="playsong", description="Play a song from YouTube URL")
+client.tree.command(name="playsong", description="Play a song from YouTube URL")
 async def playsong(interaction: discord.Interaction, url: str):
     await interaction.response.defer(thinking=True)
 
     if not interaction.guild:
         await interaction.followup.send("This command can only be used in a server!")
         return
+
+    # Add this line to define guild_id
+    guild_id = interaction.guild.id
 
     try:
         member = await interaction.guild.fetch_member(interaction.user.id)
@@ -132,7 +135,6 @@ async def playsong(interaction: discord.Interaction, url: str):
 
     if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
         try:
-            voice_channel = interaction.user.voice.channel
             voice_client = await voice_channel.connect()
             client.guild_voice_clients[guild_id] = voice_client
         except discord.errors.ClientException as e:
@@ -146,7 +148,7 @@ async def playsong(interaction: discord.Interaction, url: str):
         await interaction.followup.send(f"🎵 Now playing: **{song.title}**")
     else:
         await interaction.followup.send(f"🎵 Added to queue: **{song.title}**")
-
+        
 @client.tree.command(name="playfile", description="Play a file from attachment")
 async def playfile(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
