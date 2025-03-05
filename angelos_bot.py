@@ -212,68 +212,67 @@ def save_reaction_role_data(message_id, role_emoji_map):
 
 @bot.tree.command(name="reaction_role", description="Set up reaction roles")
 async def reaction_role(interaction: discord.Interaction, red_role: discord.Role = None, blue_role: discord.Role = None, green_role: discord.Role = None, yellow_role: discord.Role = None):
-    role = discord.utils.get(interaction.guild.roles, id=OT_ID)
-    if role not in interaction.user.roles:
-        await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
-        return
-            
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
-        return
+    try:
+        # Explicit role and admin checks
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+            return
 
-    if red_role:
-        bot.role_emoji_map["🎉"] = red_role.id
-    if blue_role:
-        bot.role_emoji_map["📢"] = blue_role.id
-    if green_role:
-        bot.role_emoji_map["🎮"] = green_role.id
-    if yellow_role:
-        bot.role_emoji_map["💀"] = yellow_role.id
-    
-    guild = interaction.guild
-    roles = {
-        "🎉": guild.get_role(bot.role_emoji_map["🎉"]) if bot.role_emoji_map["🎉"] else None,
-        "📢": guild.get_role(bot.role_emoji_map["📢"]) if bot.role_emoji_map["📢"] else None,
-        "🎮": guild.get_role(bot.role_emoji_map["🎮"]) if bot.role_emoji_map["🎮"] else None,
-        "💀": guild.get_role(bot.role_emoji_map["💀"]) if bot.role_emoji_map["💀"] else None
-    }
+        # Validate each role input
+        roles_to_set = {
+            "🎉": red_role,
+            "📢": blue_role,
+            "🎮": green_role,
+            "💀": yellow_role
+        }
 
-    description = "React to this message to get roles:\n\n"
-    for emoji, role in roles.items():
-        role_name = role.name if role else "Not set"
-        description += f"{emoji} - {role_name}\n"
-    
-    channel = await get_channel_by_id(interaction.guild, REACTION_ID)
-    if channel:
+        # Update role emoji map
+        for emoji, role in roles_to_set.items():
+            if role:
+                bot.role_emoji_map[emoji] = role.id
+
+        # Find the reaction roles channel
+        channel = await get_channel_by_id(interaction.guild, REACTION_ID)
+        if not channel:
+            await interaction.response.send_message("Could not find the specified reaction roles channel.", ephemeral=True)
+            return
+
+        # Create embed description
+        description = "React to this message to get roles:\n\n"
+        for emoji, role_id in bot.role_emoji_map.items():
+            role = interaction.guild.get_role(role_id) if role_id else None
+            role_name = role.name if role else "Not set"
+            description += f"{emoji} - {role_name}\n"
+
+        # Create and send embed
+        embed = discord.Embed(
+            title="Reaction roles!",
+            description=description,
+            color=discord.Color.black(),
+            timestamp=datetime.utcnow()
+        )
+
+        # Send message and add reactions
+        message = await channel.send(embed=embed)
+        bot.reaction_role_message_id = message.id
+
+        # Save reaction role data
+        save_reaction_role_data(message.id, bot.role_emoji_map)
+
+        # Add reactions
+        for emoji in bot.role_emoji_map.keys():
+            await message.add_reaction(emoji)
+
+        await interaction.response.send_message("Reaction roles added successfully!", ephemeral=True)
+
+    except Exception as e:
+        print(f"Detailed error in reaction_role command: {e}")
         try:
-            embed = discord.Embed(
-                title="Reaction roles!",
-                description=description,
-                color=discord.Color.black(),
-                timestamp=datetime.utcnow()
-            )
-
-            message = await channel.send(embed=embed)
-            bot.reaction_role_message_id = message.id
+            await interaction.response.send_message(f"An unexpected error occurred: {str(e)}", ephemeral=True)
+        except:
+            # Fallback if response is already sent
+            await interaction.followup.send(f"An unexpected error occurred: {str(e)}", ephemeral=True)
             
-            save_reaction_role_data(message.id, {
-                "🎉": bot.role_emoji_map["🎉"],
-                "📢": bot.role_emoji_map["📢"],
-                "🎮": bot.role_emoji_map["🎮"],
-                "💀": bot.role_emoji_map["💀"]
-            })
-            
-            await message.add_reaction("🎉")
-            await message.add_reaction("📢")
-            await message.add_reaction("🎮")
-            await message.add_reaction("💀")
-            
-            await interaction.response.send_message("Reaction roles added successfully!", ephemeral=True)
-        except Exception as e:
-            print(f"Error in reaction_role command: {e}")
-            await interaction.response.send_message("An error occurred while setting up reaction roles.", ephemeral=True)
-    else:
-        await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 #Request command.
 @bot.tree.command(name="request", description="Request more staff to the server")
 async def request(interaction: discord.Interaction):
