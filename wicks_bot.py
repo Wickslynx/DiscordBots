@@ -317,6 +317,140 @@ async def disconnect(interaction: discord.Interaction):
 
     await interaction.response.send_message("👋 Disconnected from voice channel!")
 
+class SearchView(discord.ui.View):
+    def __init__(self, search_results, requester):
+        super().__init__(timeout=180)  # 3 minutes timeout
+        self.search_results = search_results
+        self.requester = requester
+
+    @discord.ui.button(label="1️⃣", style=discord.ButtonStyle.grey, row=0)
+    async def select_first(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.process_selection(interaction, 0)
+
+    @discord.ui.button(label="2️⃣", style=discord.ButtonStyle.grey, row=0)
+    async def select_second(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.process_selection(interaction, 1)
+
+    @discord.ui.button(label="3️⃣", style=discord.ButtonStyle.grey, row=0)
+    async def select_third(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.process_selection(interaction, 2)
+
+    @discord.ui.button(label="4️⃣", style=discord.ButtonStyle.grey, row=1)
+    async def select_fourth(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.process_selection(interaction, 3)
+
+    @discord.ui.button(label="5️⃣", style=discord.ButtonStyle.grey, row=1)
+    async def select_fifth(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.process_selection(interaction, 4)
+
+    async def process_selection(self, interaction: discord.Interaction, index: int):
+        # Check if the interaction user is the original requester
+        if interaction.user.id != self.requester.id:
+            await interaction.response.send_message("You didn't initiate this search!", ephemeral=True)
+            return
+
+        # Ensure the index is valid
+        if 0 <= index < len(self.search_results):
+            selected_song = self.search_results[index]
+            
+            # Call the existing playsong command programmatically
+            await interaction.response.defer(thinking=True)
+            
+            # Use the existing playsong command's logic
+            if not interaction.guild:
+                await interaction.followup.send("This command can only be used in a server!")
+                return
+
+            guild_id = interaction.guild.id
+
+            try:
+                # Check if user is in a voice channel
+                if not interaction.user.voice or not interaction.user.voice.channel:
+                    await interaction.followup.send("You need to be in a voice channel to use this command!")
+                    return
+                    
+                voice_channel = interaction.user.voice.channel
+            except Exception as e:
+                print(f"Error checking voice state: {e}")
+                await interaction.followup.send("You need to be in a voice channel to use this command!")
+                return
+            
+            try:
+                source = await get_audio_source(selected_song['url'], interaction)
+            except Exception as e:
+                await interaction.followup.send(f"Error retrieving the song: {str(e)}")
+                return
+
+            song = Song(source['title'], selected_song['url'], interaction.user, source)
+
+            if guild_id not in client.guild_voice_clients or not client.guild_voice_clients[guild_id].is_connected():
+                try:
+                    voice_client = await voice_channel.connect()
+                    client.guild_voice_clients[guild_id] = voice_client
+                except discord.errors.ClientException as e:
+                    await interaction.followup.send(f"Error connecting to voice channel: {str(e)}")
+                    return
+
+            client.music_queue.append(song)
+
+            if guild_id not in client.currently_playing or client.currently_playing[guild_id] is None:
+                await play_next(guild_id)
+                await interaction.followup.send(f"🎵 Now playing: **{song.title}**")
+            else:
+                await interaction.followup.send(f"🎵 Added to queue: **{song.title}**")
+
+            # Disable all buttons after selection
+            for item in self.children:
+                item.disabled = True
+            await interaction.edit_original_response(view=self)
+        else:
+            await interaction.response.send_message("Invalid selection!", ephemeral=True)
+
+@client.tree.command(name="search", description="Search for a song on YouTube")
+@app_commands.describe(query="Search term for the song")
+async def search(interaction: discord.Interaction, query: str):
+    await interaction.response.defer(thinking=True)
+
+    # Use yt_dlp to perform a YouTube search
+    search_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'extract_flat': True,
+        'default_search': 'ytsearch5:',  # search for top 5 results
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(search_opts) as ydl:
+            result = ydl.extract_info(query, download=False)
+            
+            # Ensure we got search results
+            if 'entries' not in result or not result['entries']:
+                await interaction.followup.send("No results found for your search.")
+                return
+
+            # Prepare search results
+            search_results = []
+            for entry in result['entries'][:5]:
+                search_results.append({
+                    'title': entry.get('title', 'Unknown Title'),
+                    'url': entry.get('webpage_url', ''),
+                    'uploader': entry.get('uploader', 'Unknown Uploader')
+                })
+
+            # Create search results message
+            search_text = "🔍 **Search Results:**\n\n"
+            for i, result in enumerate(search_results, 1):
+                search_text += f"{i}️⃣ **{result['title']}**\n*By {result['uploader']}*\n\n"
+
+            # Create view with selection buttons
+            view = SearchView(search_results, interaction.user)
+
+            await interaction.followup.send(search_text, view=view)
+
+    except Exception as e:
+        print(f"Search error: {str(e)}")
+        await interaction.followup.send(f"An error occurred while searching: {str(e)}")
+
 token = ""
 
 # Run the bot
