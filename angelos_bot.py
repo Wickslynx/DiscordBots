@@ -248,7 +248,7 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
         embed = discord.Embed(
             title="Reaction roles!",
             description=description,
-            color=discord.Color.black(),
+            color=discord.Color.white(),
             timestamp=datetime.utcnow()
         )
 
