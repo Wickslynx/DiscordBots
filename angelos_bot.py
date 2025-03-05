@@ -210,6 +210,61 @@ def save_reaction_role_data(message_id, role_emoji_map):
     with open('storage/reaction_roles.json', 'w') as file:
         json.dump(data, file, indent=4)
 
+@bot.event
+
+
+
+async def on_raw_reaction_add(payload):
+    if payload.message_id != bot.reaction_role_message_id:
+        return
+
+    if payload.user_id == bot.user.id:
+        return
+
+    guild = bot.get_guild(payload.guild_id)
+    if not guild:
+        return
+
+    emoji = str(payload.emoji)
+    if emoji in bot.role_emoji_map:
+        role_id = bot.role_emoji_map[emoji]
+        role = guild.get_role(role_id)
+        if role:
+            member = guild.get_member(payload.user_id)
+            if member:
+                await member.add_roles(role)
+                try:
+                    await member.send(f"You have been given the {role.name} role!")
+                except discord.HTTPException:
+                    pass  # Cannot send DM
+
+
+
+
+
+@bot.event
+async def on_raw_reaction_remove(payload):
+    if payload.message_id != bot.reaction_role_message_id:
+        return
+
+    guild = bot.get_guild(payload.guild_id)
+    if not guild:
+        return
+    
+    emoji = str(payload.emoji)
+    if emoji in bot.role_emoji_map:
+        role_id = bot.role_emoji_map[emoji]
+        role = guild.get_role(role_id)
+        if role:
+            member = guild.get_member(payload.user_id)
+            if member:
+                await member.remove_roles(role)
+                try:
+                    await member.send(f"Your {role.name} role has been removed!")
+                except discord.HTTPException:
+                    pass  # Cannot send DM
+
+
 @bot.tree.command(name="reaction_role", description="Set up reaction roles")
 async def reaction_role(interaction: discord.Interaction, red_role: discord.Role = None, blue_role: discord.Role = None, green_role: discord.Role = None, yellow_role: discord.Role = None):
     try:
