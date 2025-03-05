@@ -6,10 +6,8 @@ import os
 from discord.ext import tasks
 from pathlib import Path
 
-
 Path("storage").mkdir(exist_ok=True)
-        
-# Bot config.
+
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
@@ -17,7 +15,6 @@ intents.reactions = True
 
 class ReactionButtons(discord.ui.View):
     def __init__(self):
-            
         super().__init__(timeout=None)
         
     @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, custom_id="approve_loa")
@@ -30,7 +27,6 @@ class ReactionButtons(discord.ui.View):
         embed = interaction.message.embeds[0]
         embed.color = discord.Color.green()
         embed.add_field(name="Status", value=f"Approved by {interaction.user.mention}", inline=False)
-        
         
         user_field = discord.utils.get(embed.fields, name="Staff Member")
         start_date_field = discord.utils.get(embed.fields, name="Start Date")
@@ -55,7 +51,6 @@ class ReactionButtons(discord.ui.View):
             except Exception as e:
                 await interaction.followup.send(f"Failed to add LOA role: {str(e)}", ephemeral=True)
 
-        # Disable buttons
         for item in self.children:
             item.disabled = True
         
@@ -73,14 +68,12 @@ class ReactionButtons(discord.ui.View):
         embed.color = discord.Color.red()
         embed.add_field(name="Status", value=f"Denied by {interaction.user.mention}", inline=False)
 
-        # Disable buttons
         for item in self.children:
             item.disabled = True
 
         await interaction.message.edit(embed=embed, view=self)
         await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
 
-# Vote buttons view
 class VoteView(discord.ui.View):
     def __init__(self, message_id=None):
         super().__init__(timeout=None)
@@ -96,28 +89,24 @@ class VoteView(discord.ui.View):
 
 class Bot(commands.Bot):
     def __init__(self):
-              self.reaction_role_message_id = None
-              self.role_emoji_map = {
-                    "🎉": None,                        
-                    "📢": None,                   
-                    "🎮": None,              
-                    "💀": None
-              }
-            
-              super().__init__(
-                    command_prefix='/',
-                    intents=intents,
-                    application_id='1336770228134088846'
-              )
+        self.reaction_role_message_id = None
+        self.role_emoji_map = {
+            "🎉": None,                        
+            "📢": None,                   
+            "🎮": None,              
+            "💀": None
+        }
+        
+        super().__init__(
+            command_prefix='/',
+            intents=intents,
+            application_id='1336770228134088846'
+        )
 
     async def setup_hook(self):
-        # Register the persistent view
         self.add_view(ReactionButtons())
-        
-        # Start the daily check loop
         self.daily_check.start()
         
-        # Load vote counts if exists
         global vote_counts
         try:
             with open('storage/vote_counts.json', 'r') as file:
@@ -125,21 +114,18 @@ class Bot(commands.Bot):
         except FileNotFoundError:
             vote_counts = {}
             
-        # Sync commands
         await self.tree.sync()
         print("Commands synced globally")
         
-        # Load saved reaction role data if it exists
         try:
             with open('storage/reaction_roles.json', 'r') as file:
                 data = json.load(file)
                 self.reaction_role_message_id = data.get('message_id')
-                # We'll set the actual role objects when on_ready runs
                 self.role_emoji_map = data.get('roles', self.role_emoji_map)
         except FileNotFoundError:
             print("No reaction role data found. It will be created when the command is used.")
 
-    @tasks.loop(time=time(0, 0))  # (00:00)
+    @tasks.loop(time=time(0, 0))
     async def daily_check(self):
         loa_data = load_loa_data()
         today = datetime.now().strftime('%Y-%m-%d')
@@ -152,7 +138,6 @@ class Bot(commands.Bot):
                 except Exception as e:
                     print(f"Could not send start notification to user {user_id}: {str(e)}")
 
-    
             if info['end_date'] == today:
                 try:
                     user = await self.fetch_user(int(user_id))
@@ -172,10 +157,8 @@ class Bot(commands.Bot):
     async def before_daily_check(self):
         await self.wait_until_ready()
 
-# Create bot instance.
 bot = Bot()
 
-# Channel IDs.
 WELCOME_CHANNEL_ID = 1337432747094048890
 LEAVES_CHANNEL_ID = 1337432777066549288
 ANNOUNCEMENT_CHANNEL_ID = 1223929286528991253  
@@ -194,16 +177,13 @@ LOA_ID = 1322405982462017546
 HR_ID = 1309973478539268136
 REACTION_ID = 1309877009815572501
 
-# Define role IDs for reactions
 ROLE_RED_ID = 1336748921153912974
 ROLE_BLUE_ID = 1312376313167745125
 ROLE_GREEN_ID = 1336749372192325664
 ROLE_YELLOW_ID = 1336749415440060489
 
-# Global variable for vote tracking
 vote_counts = {}
 
-# Helper functions 
 async def get_channel_by_id(guild, channel_id):
     return guild.get_channel(channel_id)
 
@@ -223,7 +203,6 @@ def save_vote_counts():
         json.dump(vote_counts, file, indent=4)
 
 def save_reaction_role_data(message_id, role_emoji_map):
-    """Save reaction role message ID and role mappings"""
     data = {
         'message_id': message_id,
         'roles': role_emoji_map
@@ -231,113 +210,8 @@ def save_reaction_role_data(message_id, role_emoji_map):
     with open('storage/reaction_roles.json', 'w') as file:
         json.dump(data, file, indent=4)
 
-# Bot setup.
-@bot.event
-async def on_ready():
-    print(f'Bot logged in as {bot.user}')
-    
-    # Set up the role objects based on IDs
-    guild = bot.get_guild(1223694900084867247)  
-    if guild:
-        bot.role_emoji_map = {
-            "🎉": ROLE_RED_ID,
-            "📢": ROLE_BLUE_ID,
-            "🎮": ROLE_GREEN_ID,
-            "💀": ROLE_YELLOW_ID
-        }
-    
-    await bot.change_presence(
-        activity=discord.Activity(
-            type=discord.ActivityType.watching,
-            name="Join Los Angelos Roleplay today!"
-        )
-    )
-
-# When a member joins send a message.
-@bot.event
-async def on_member_join(member):
-    channel = await get_channel_by_id(member.guild, WELCOME_CHANNEL_ID)
-    if channel:
-        embed = discord.Embed(
-            title="New Member!",
-            description=f"Welcome {member.mention} to the server!",
-            color=discord.Color.green(),
-            timestamp=datetime.utcnow()
-        )
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
-        embed.add_field(name="Member Count", value=str(member.guild.member_count))
-        await channel.send(embed=embed)
-
-# When a member leaves, send a message.
-@bot.event
-async def on_member_remove(member):
-    channel = await get_channel_by_id(member.guild, LEAVES_CHANNEL_ID)
-    if channel:
-        embed = discord.Embed(
-            title="Member Left",
-            description=f"Goodbye {member.mention}! We'll miss you!",
-            color=discord.Color.red(),
-            timestamp=datetime.utcnow()
-        )
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
-        embed.add_field(name="Member Count", value=str(member.guild.member_count))
-        await channel.send(embed=embed)
-
-# Handle reaction roles
-@bot.event
-async def on_raw_reaction_add(payload):
-    # Check if the reaction is on our reaction role message
-    if payload.message_id != bot.reaction_role_message_id:
-        return
-    
-    # Ignore bot's own reactions
-    if payload.user_id == bot.user.id:
-        return
-    
-    guild = bot.get_guild(payload.guild_id)
-    if not guild:
-        return
-    
-    emoji = str(payload.emoji)
-    if emoji in bot.role_emoji_map:
-        role_id = bot.role_emoji_map[emoji]
-        role = guild.get_role(role_id)
-        if role:
-            member = guild.get_member(payload.user_id)
-            if member:
-                await member.add_roles(role)
-                try:
-                    await member.send(f"You have been given the {role.name} role!")
-                except discord.HTTPException:
-                    pass  # Cannot send DM
-
-@bot.event
-async def on_raw_reaction_remove(payload):
-    # Check if the reaction is on our reaction role message
-    if payload.message_id != bot.reaction_role_message_id:
-        return
-    
-    guild = bot.get_guild(payload.guild_id)
-    if not guild:
-        return
-    
-    emoji = str(payload.emoji)
-    if emoji in bot.role_emoji_map:
-        role_id = bot.role_emoji_map[emoji]
-        role = guild.get_role(role_id)
-        if role:
-            member = guild.get_member(payload.user_id)
-            if member:
-                await member.remove_roles(role)
-                try:
-                    await member.send(f"Your {role.name} role has been removed!")
-                except discord.HTTPException:
-                    pass  # Cannot send DM
-
-# Improved reaction_role command
 @bot.tree.command(name="reaction_role", description="Set up reaction roles")
 async def reaction_role(interaction: discord.Interaction, red_role: discord.Role = None, blue_role: discord.Role = None, green_role: discord.Role = None, yellow_role: discord.Role = None):
-     #Check perms.
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
     if role not in interaction.user.roles:
         await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
@@ -347,9 +221,6 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
         await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
         return
 
-    
-        
-    # Update the role IDs
     if red_role:
         bot.role_emoji_map["🎉"] = red_role.id
     if blue_role:
@@ -359,15 +230,13 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
     if yellow_role:
         bot.role_emoji_map["💀"] = yellow_role.id
     
-    # Get role objects
     guild = interaction.guild
     roles = {
-        "🎉": guild.get_role(bot.role_emoji_map["🎉"]),
-        "📢": guild.get_role(bot.role_emoji_map["📢"]),
-        "🎮": guild.get_role(bot.role_emoji_map["🎮"]),
-        "💀": guild.get_role(bot.role_emoji_map["💀"])
+        "🎉": guild.get_role(bot.role_emoji_map["🎉"]) if bot.role_emoji_map["🎉"] else None,
+        "📢": guild.get_role(bot.role_emoji_map["📢"]) if bot.role_emoji_map["📢"] else None,
+        "🎮": guild.get_role(bot.role_emoji_map["🎮"]) if bot.role_emoji_map["🎮"] else None,
+        "💀": guild.get_role(bot.role_emoji_map["💀"]) if bot.role_emoji_map["💀"] else None
     }
-    
 
     description = "React to this message to get roles:\n\n"
     for emoji, role in roles.items():
@@ -376,39 +245,35 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
     
     channel = await get_channel_by_id(interaction.guild, REACTION_ID)
     if channel:
-        embed = discord.Embed(
-            title="Reaction roles!",
-            description=description,
-            color=discord.Color.black(),
-            timestamp=datetime.utcnow()
-        )
+        try:
+            embed = discord.Embed(
+                title="Reaction roles!",
+                description=description,
+                color=discord.Color.black(),
+                timestamp=datetime.utcnow()
+            )
 
-        message = await channel.send(embed=embed)
-        bot.reaction_role_message_id = message.id
-        
-        # Save the reaction role data
-        save_reaction_role_data(message.id, {
-            "🎉": bot.role_emoji_map["🎉"],
-            "📢": bot.role_emoji_map["📢"],
-            "🎮": bot.role_emoji_map["🎮"],
-            "💀": bot.role_emoji_map["💀"]
-        })
-        
-        # Add reactions
-        await message.add_reaction("🎉")
-        #await discord.asyncio.sleep(0.5)
-        await message.add_reaction("📢")
-        #await discord.asyncio.sleep(0.5)
-        await message.add_reaction("🎮")
-        #await discord.asyncio.sleep(0.5)
-        await message.add_reaction("💀")
-        
-        await interaction.response.send_message("Reaction roles added successfully!", ephemeral=True)
-        
+            message = await channel.send(embed=embed)
+            bot.reaction_role_message_id = message.id
+            
+            save_reaction_role_data(message.id, {
+                "🎉": bot.role_emoji_map["🎉"],
+                "📢": bot.role_emoji_map["📢"],
+                "🎮": bot.role_emoji_map["🎮"],
+                "💀": bot.role_emoji_map["💀"]
+            })
+            
+            await message.add_reaction("🎉")
+            await message.add_reaction("📢")
+            await message.add_reaction("🎮")
+            await message.add_reaction("💀")
+            
+            await interaction.response.send_message("Reaction roles added successfully!", ephemeral=True)
+        except Exception as e:
+            print(f"Error in reaction_role command: {e}")
+            await interaction.response.send_message("An error occurred while setting up reaction roles.", ephemeral=True)
     else:
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
-
-
 #Request command.
 @bot.tree.command(name="request", description="Request more staff to the server")
 async def request(interaction: discord.Interaction):
