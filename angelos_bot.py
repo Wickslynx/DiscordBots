@@ -90,11 +90,16 @@ class VoteView(discord.ui.View):
 class Bot(commands.Bot):
     def __init__(self):
         self.reaction_role_message_id = None
+        # Updated role_emoji_map with new roles
         self.role_emoji_map = {
             "🎉": None,                        
             "📢": None,                   
             "🎮": None,              
-            "💀": None
+            "💀": None,
+            "🚦": None,  # Session Ping
+            "📈": None,  # Poll notification
+            "🗓": None,   # Event notification
+            "📸": None    # Media notification
         }
         
         super().__init__(
@@ -182,6 +187,11 @@ ROLE_BLUE_ID = 1312376313167745125
 ROLE_GREEN_ID = 1336749372192325664
 ROLE_YELLOW_ID = 1336749415440060489
 
+SESSION_PING_ROLE_ID = 1312376286769057792
+POLL_NOTIFICATION_ROLE_ID = 1336748955891007599
+EVENT_NOTIFICATION_ROLE_ID = 1336749372192325664
+MEDIA_NOTIFICATION_ROLE_ID = 1336749395705856082
+
 vote_counts = {}
 
 async def get_channel_by_id(guild, channel_id):
@@ -211,9 +221,6 @@ def save_reaction_role_data(message_id, role_emoji_map):
         json.dump(data, file, indent=4)
 
 @bot.event
-
-
-
 async def on_raw_reaction_add(payload):
     if payload.message_id != bot.reaction_role_message_id:
         return
@@ -238,10 +245,6 @@ async def on_raw_reaction_add(payload):
                 except discord.HTTPException:
                     pass  # Cannot send DM
 
-
-
-
-
 @bot.event
 async def on_raw_reaction_remove(payload):
     if payload.message_id != bot.reaction_role_message_id:
@@ -264,21 +267,33 @@ async def on_raw_reaction_remove(payload):
                 except discord.HTTPException:
                     pass  # Cannot send DM
 
-
+# Updated reaction_role command to include new roles
 @bot.tree.command(name="reaction_role", description="Set up reaction roles")
-async def reaction_role(interaction: discord.Interaction, red_role: discord.Role = None, blue_role: discord.Role = None, green_role: discord.Role = None, yellow_role: discord.Role = None):
+async def reaction_role(interaction: discord.Interaction, 
+                       red_role: discord.Role = None, 
+                       blue_role: discord.Role = None, 
+                       green_role: discord.Role = None, 
+                       yellow_role: discord.Role = None,
+                       session_ping_role: discord.Role = None,  # New parameter for Session Ping
+                       poll_notification_role: discord.Role = None,  # New parameter for Poll notification
+                       event_notification_role: discord.Role = None,  # New parameter for Event notification
+                       media_notification_role: discord.Role = None):  # New parameter for Media notification
     try:
         # Explicit role and admin checks
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
             return
 
-        # Validate each role input
+        # Validate each role input - updated with new roles
         roles_to_set = {
             "🎉": red_role,
             "📢": blue_role,
             "🎮": green_role,
-            "💀": yellow_role
+            "💀": yellow_role,
+            "🚦": session_ping_role,
+            "📈": poll_notification_role,
+            "🗓": event_notification_role,
+            "📸": media_notification_role
         }
 
         # Update role emoji map
@@ -327,7 +342,6 @@ async def reaction_role(interaction: discord.Interaction, red_role: discord.Role
         except:
             # Fallback if response is already sent
             await interaction.followup.send(f"An unexpected error occurred: {str(e)}", ephemeral=True)
-            
 #Request command.
 @bot.tree.command(name="request", description="Request more staff to the server")
 async def request(interaction: discord.Interaction):
