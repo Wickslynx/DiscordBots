@@ -498,7 +498,7 @@ async def on_interaction(interaction: discord.Interaction):
 
 @client.event
 async def on_message(message):
-    if message.reference and not message.author.client:
+    if message.reference and not message.author.bot:
         try:
             referenced_message = await message.channel.fetch_message(message.reference.message_id)
             
