@@ -498,11 +498,11 @@ async def on_interaction(interaction: discord.Interaction):
 
 @client.event
 async def on_message(message):
-    if message.reference and not message.author.bot:
+    if message.reference and not message.author.client:
         try:
             referenced_message = await message.channel.fetch_message(message.reference.message_id)
             
-            if referenced_message.author == bot.user and referenced_message.embeds:
+            if referenced_message.author == client.user and referenced_message.embeds:
                 if edit_mode.get(message.author.id, False):
                     code = message.content
 
@@ -544,7 +544,7 @@ async def on_message(message):
         except Exception as e:
             print(f"Error handling reply: {e}")
     
-    await bot.process_commands(message)
+    await client.process_commands(message)
 
 async def run_c_code(interaction: discord.Interaction):
     message = interaction.message
