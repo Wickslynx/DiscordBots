@@ -451,6 +451,240 @@ async def search(interaction: discord.Interaction, query: str):
         print(f"Search error: {str(e)}")
         await interaction.followup.send(f"An error occurred while searching: {str(e)}")
 
+
+
+# Global variable to store code for each user
+user_code = {}
+# Track if a user is currently in edit mode
+edit_mode = {}
+
+
+
+@bot.tree.command(name="ccode", description="Create a C code embed with run and save buttons")
+async def ccode(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="C Code Editor",
+        description="```c\n#include <stdio.h>\n\nint main() {\n    printf(\"Hello, Discord!\\n\");\n    return 0;\n}\n```",
+        color=discord.Color.blue()
+    )
+    
+    run_button = discord.ui.Button(label="Run", style=discord.ButtonStyle.green, custom_id="run_code")
+    save_button = discord.ui.Button(label="Save", style=discord.ButtonStyle.blurple, custom_id="save_code")
+    edit_button = discord.ui.Button(label="Edit", style=discord.ButtonStyle.gray, custom_id="edit_code")
+    
+    view = discord.ui.View()
+    view.add_item(run_button)
+    view.add_item(save_button)
+    view.add_item(edit_button)
+    
+    await interaction.response.send_message(embed=embed, view=view)
+    
+    user_code[interaction.user.id] = "#include <stdio.h>\n\nint main() {\n    printf(\"Hello, Discord!\\n\");\n    return 0;\n}"
+    edit_mode[interaction.user.id] = False
+
+@bot.event
+async def on_interaction(interaction: discord.Interaction):
+    if interaction.type == discord.InteractionType.component:
+        custom_id = interaction.data["custom_id"]
+        
+        if custom_id == "run_code":
+            await run_c_code(interaction)
+        elif custom_id == "save_code":
+            await save_c_code(interaction)
+        elif custom_id == "edit_code":
+            await toggle_edit_mode(interaction)
+        elif custom_id == "cancel_edit":
+            await cancel_edit(interaction)
+
+@bot.event
+async def on_message(message):
+    if message.reference and not message.author.bot:
+        try:
+            referenced_message = await message.channel.fetch_message(message.reference.message_id)
+            
+            if referenced_message.author == bot.user and referenced_message.embeds:
+                if edit_mode.get(message.author.id, False):
+                    code = message.content
+                    
+                    if code.startswith("```c") and code.endswith("```"):
+                        code = code[4:-3].strip()
+                    elif code.startswith("```") and code.endswith("```"):
+                        code = code[3:-3].strip()
+                    
+                    # Debug print
+                    print(f"Code received for update:\n{code}")
+                    
+                    embed = referenced_message.embeds[0]
+                    embed.description = f"```c\n{code}\n```"
+                    
+                    user_code[message.author.id] = code
+                    
+                    run_button = discord.ui.Button(label="Run", style=discord.ButtonStyle.green, custom_id="run_code")
+                    save_button = discord.ui.Button(label="Save", style=discord.ButtonStyle.blurple, custom_id="save_code")
+                    edit_button = discord.ui.Button(label="Edit", style=discord.ButtonStyle.gray, custom_id="edit_code")
+                    
+                    view = discord.ui.View()
+                    view.add_item(run_button)
+                    view.add_item(save_button)
+                    view.add_item(edit_button)
+                    
+                    await referenced_message.edit(embed=embed, view=view)
+                    
+                    edit_mode[message.author.id] = False
+                    
+                    await message.delete()
+                    
+                    await message.channel.send(f"{message.author.mention} Your code has been updated!", delete_after=5)
+        except Exception as e:
+            print(f"Error handling reply: {e}")
+    
+    await bot.process_commands(message)
+
+async def run_c_code(interaction: discord.Interaction):
+    message = interaction.message
+    embed_description = message.embeds[0].description
+    
+    code = extract_code_from_embed(embed_description)
+    
+    # Debug print
+    print(f"Code being compiled and run:\n{code}")
+    
+    await interaction.response.defer(ephemeral=True)
+    
+    result = await compile_and_run_c_code(code)
+    
+    await interaction.followup.send(f"Execution result:\n```\n{result}\n```", ephemeral=True)
+
+async def save_c_code(interaction: discord.Interaction):
+    message = interaction.message
+    embed_description = message.embeds[0].description
+    
+    code = extract_code_from_embed(embed_description)
+    
+    # Debug print
+    print(f"Code being saved:\n{code}")
+    
+    user_code[interaction.user.id] = code
+    
+    await interaction.response.send_message("Code saved successfully!", ephemeral=True)
+
+async def toggle_edit_mode(interaction: discord.Interaction):
+    is_editing = edit_mode.get(interaction.user.id, False)
+    
+    if is_editing:
+        edit_mode[interaction.user.id] = False
+        
+        run_button = discord.ui.Button(label="Run", style=discord.ButtonStyle.green, custom_id="run_code")
+        save_button = discord.ui.Button(label="Save", style=discord.ButtonStyle.blurple, custom_id="save_code")
+        edit_button = discord.ui.Button(label="Edit", style=discord.ButtonStyle.gray, custom_id="edit_code")
+        
+        view = discord.ui.View()
+        view.add_item(run_button)
+        view.add_item(save_button)
+        view.add_item(edit_button)
+        
+        await interaction.response.edit_message(view=view)
+        await interaction.followup.send("Edit mode disabled. You can now run or save your code.", ephemeral=True)
+    else:
+        edit_mode[interaction.user.id] = True
+        
+        cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.red, custom_id="cancel_edit")
+        
+        view = discord.ui.View()
+        view.add_item(cancel_button)
+        
+        await interaction.response.edit_message(view=view)
+        
+        message = interaction.message
+        embed_description = message.embeds[0].description
+        code = extract_code_from_embed(embed_description)
+        
+        # Debug print
+        print(f"Current code in edit mode:\n{code}")
+        
+        await interaction.followup.send(
+            "Edit mode enabled. Reply to this message with your code to update it.\n"
+            "You can use code blocks (```c ... ```) or paste the code directly.\n\n"
+            f"Current code:\n```c\n{code}\n```",
+            ephemeral=True
+        )
+
+async def cancel_edit(interaction: discord.Interaction):
+    edit_mode[interaction.user.id] = False
+    
+    run_button = discord.ui.Button(label="Run", style=discord.ButtonStyle.green, custom_id="run_code")
+    save_button = discord.ui.Button(label="Save", style=discord.ButtonStyle.blurple, custom_id="save_code")
+    edit_button = discord.ui.Button(label="Edit", style=discord.ButtonStyle.gray, custom_id="edit_code")
+    
+    view = discord.ui.View()
+    view.add_item(run_button)
+    view.add_item(save_button)
+    view.add_item(edit_button)
+    
+    await interaction.response.edit_message(view=view)
+    await interaction.followup.send("Edit mode cancelled.", ephemeral=True)
+
+def extract_code_from_embed(embed_description):
+    code_start = embed_description.find("```c\n") + 4
+    code_end = embed_description.rfind("```")
+    
+    if code_start > 4 and code_end > code_start:
+        code = embed_description[code_start:code_end].strip()
+        print(f"Extracted code from embed:\n{code}")
+        return code
+    print("Failed to extract code from embed")
+    return ""
+
+async def compile_and_run_c_code(code):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        c_file_path = os.path.join(temp_dir, "code.c")
+        executable_path = os.path.join(temp_dir, "code")
+        
+        # Write the code to a file and print its contents for debugging
+        with open(c_file_path, "w") as f:
+            f.write(code)
+        
+        # Debug: Read back the file contents to verify
+        with open(c_file_path, "r") as f:
+            file_content = f.read()
+            print(f"Content written to C file:\n{file_content}")
+        
+        # Run gcc with verbose output for debugging
+        compile_process = await asyncio.create_subprocess_exec(
+            "gcc", "-v", c_file_path, "-o", executable_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await compile_process.communicate()
+        
+        print(f"GCC stdout: {stdout.decode()}")
+        print(f"GCC stderr: {stderr.decode()}")
+        
+        if compile_process.returncode != 0:
+            return f"Compilation Error:\n{stderr.decode()}"
+        
+        try:
+            run_process = await asyncio.create_subprocess_exec(
+                executable_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            try:
+                stdout, stderr = await asyncio.wait_for(run_process.communicate(), timeout=5.0)
+                
+                if run_process.returncode != 0:
+                    return f"Runtime Error:\n{stderr.decode()}"
+                
+                return stdout.decode() or "Program executed successfully with no output."
+            except asyncio.TimeoutError:
+                run_process.kill()
+                return "Execution timed out after 5 seconds."
+        except Exception as e:
+            return f"Error running program: {str(e)}"
+
+
 token = ""
 
 # Run the bot
