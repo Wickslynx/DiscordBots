@@ -560,6 +560,18 @@ async def run_c_code(interaction: discord.Interaction):
     result = await compile_and_run_c_code(code)
     
     await interaction.followup.send(f"Execution result:\n```\n{result}\n```", ephemeral=True)
+    
+async def process_file_attachment(attachment):
+    if not attachment.filename.endswith('.c'):
+        return None
+    
+    try:
+        file_content = await attachment.read()
+        return file_content.decode('utf-8')
+    except Exception as e:
+        print(f"Error reading file attachment: {e}")
+        return None
+
 
 async def save_c_code(interaction: discord.Interaction):
     message = interaction.message
