@@ -460,7 +460,7 @@ edit_mode = {}
 
 
 
-@bot.tree.command(name="ccode", description="Create a C code embed with run and save buttons")
+@client.tree.command(name="ccode", description="Create a C code embed with run and save buttons")
 async def ccode(interaction: discord.Interaction):
     embed = discord.Embed(
         title="C Code Editor",
@@ -482,7 +482,7 @@ async def ccode(interaction: discord.Interaction):
     user_code[interaction.user.id] = "#include <stdio.h>\n\nint main() {\n    printf(\"Hello, Discord!\\n\");\n    return 0;\n}"
     edit_mode[interaction.user.id] = False
 
-@bot.event
+@client.event
 async def on_interaction(interaction: discord.Interaction):
     if interaction.type == discord.InteractionType.component:
         custom_id = interaction.data["custom_id"]
@@ -496,7 +496,7 @@ async def on_interaction(interaction: discord.Interaction):
         elif custom_id == "cancel_edit":
             await cancel_edit(interaction)
 
-@bot.event
+@client.event
 async def on_message(message):
     if message.reference and not message.author.bot:
         try:
@@ -505,6 +505,12 @@ async def on_message(message):
             if referenced_message.author == bot.user and referenced_message.embeds:
                 if edit_mode.get(message.author.id, False):
                     code = message.content
+
+                    if message.attachments:
+                        file_content = await process_file_attachment(message.attachments[0])
+                        if file_content:
+                            code = file_content
+                            
                     
                     if code.startswith("```c") and code.endswith("```"):
                         code = code[4:-3].strip()
