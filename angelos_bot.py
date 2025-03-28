@@ -321,7 +321,7 @@ class TicketView(discord.ui.View):
         await ticket_channel.delete()
         
 
- ticket_system = TicketSystem(bot)
+ticket_system = TicketSystem(bot)
 
 @bot.tree.command(name="tickets-config", description="Configure ticket types")
 @app_commands.checks.has_permissions(administrator=True)
@@ -430,7 +430,7 @@ async def ticket_force_close(interaction: discord.Interaction):
     if interaction.guild.id in ticket_system.active_tickets:
             ticket_id = interaction.channel.name.split('-')[-1]
             if ticket_id in ticket_system.active_tickets[interaction.guild.id]:
-            del ticket_system.active_tickets[interaction.guild.id][ticket_id]
+                del ticket_system.active_tickets[interaction.guild.id][ticket_id]
         
     await interaction.channel.delete()
         
