@@ -437,7 +437,6 @@ async def ticket_remove(interaction: discord.Interaction, member: discord.Member
     await interaction.response.send_message(f"{member.mention} has been removed from the ticket.")
 
 @bot.tree.command(name="ticket-force-close", description="Forcibly close the current ticket")
-@app_commands.checks.has_permissions(administrator=True)
 async def ticket_force_close(interaction: discord.Interaction):
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
