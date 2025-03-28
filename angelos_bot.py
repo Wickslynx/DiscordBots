@@ -322,7 +322,6 @@ class TicketConfigView(discord.ui.View):
         self.add_item(TicketTypeSelect(ticket_system))
 
 @bot.tree.command(name="tickets-config", description="Configure ticket types")
-@app_commands.checks.has_permissions(administrator=True)
 async def tickets_config(interaction: discord.Interaction):
     """Configure ticket types for the server."""
     view = TicketConfigView(ticket_system)
