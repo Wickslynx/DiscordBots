@@ -235,7 +235,7 @@ class TicketSystem:
             
             # Get required roles
             ownership_team = interaction.guild.get_role(OT_ID)
-            internal_affairs = interaction.guild.get_role(IA_ID)
+            internal_affairs = interaction.guild.get_role(INTERNAL_AFFAIRS_ID)
             
             # Set channel permissions
             await ticket_channel.set_permissions(interaction.user, read_messages=True, send_messages=True)
