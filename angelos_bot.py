@@ -279,7 +279,7 @@ class TicketSystem:
             
             # Send embed with ticket view
             ticket_view = TicketView(self, ticket_id)
-            await ticket_channel.send(f"{user.mention}")
+            await ticket_channel.send(f"{author.mention}")
             await ticket_channel.send(embed=embed, view=ticket_view)
             
             # Track active tickets
