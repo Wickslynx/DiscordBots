@@ -268,15 +268,64 @@ class TicketSystem:
         except Exception as e:
             await interaction.response.send_message(f"Failed to create ticket: {str(e)}", ephemeral=True)
             return None
+            
+@bot.tree.command(name="tickets-config", description="Configure ticket types")
+async def tickets_config(interaction: discord.Interaction):
+    """Configure ticket types for the server."""
+    # Create a select menu with ticket types
+    select = discord.ui.Select(
+        custom_id="ticket_type_select",
+        placeholder="Select Ticket Type:",
+        options=[
+            discord.SelectOption(
+                label="General Support", 
+                value="support", 
+                description="Create a general support ticket"
+            ),
+            discord.SelectOption(
+                label="Reports", 
+                value="report", 
+                description="Submit a report or issue"
+            ),
+            discord.SelectOption(
+                label="Appeals", 
+                value="appeal", 
+                description="Submit an appeal"
+            ),
+            discord.SelectOption(
+                label="Partnership/Paid Ad", 
+                value="paid-ad", 
+                description="Partnership or paid advertisement inquiry"
+            )
+        ]
+    )
+    
+    view = TicketConfigView(ticket_system)
+    view.add_item(select)
+    
+    try:
+        await interaction.response.send_message("Configure ticket types:", view=view, ephemeral=True)
+    except discord.HTTPException as e:
+        print(f"Error sending ticket config message: {e}")
+        # Fallback error handling
+        try:
+            await interaction.followup.send("Failed to send ticket configuration. Please try again.", ephemeral=True)
+        except:
+            pass
 
 class TicketConfigView(discord.ui.View):
     def __init__(self, ticket_system):
         super().__init__()
         self.ticket_system = ticket_system
         
-    @discord.ui.select(cls=discord.ui.Select, placeholder="Select Ticket Type", custom_id="ticket_type_select")
+    @discord.ui.select(placeholder="Select Ticket Type", custom_id="ticket_type_select")
     async def ticket_select(self, interaction: discord.Interaction, select: discord.ui.Select):
         """Handle ticket type selection."""
+        # Ensure a value is selected
+        if not select.values:
+            await interaction.response.send_message("Please select a ticket type.", ephemeral=True)
+            return
+        
         ticket_type = select.values[0]
         
         # Store the selected ticket type in the configuration
@@ -286,6 +335,7 @@ class TicketConfigView(discord.ui.View):
         }
         
         await interaction.response.send_message(f"Ticket type set to {ticket_type}", ephemeral=True)
+
 
 class TicketView(discord.ui.View):
     def __init__(self, ticket_system, ticket_id):
@@ -322,26 +372,6 @@ class TicketView(discord.ui.View):
         
 
 ticket_system = TicketSystem(bot)
-
-@bot.tree.command(name="tickets-config", description="Configure ticket types")
-async def tickets_config(interaction: discord.Interaction):
-    """Configure ticket types for the server."""
-    # Create a select menu with ticket types
-    select = discord.ui.Select(
-        custom_id="ticket_type_select",
-        placeholder="Select Ticket Type:",
-        options=[
-            discord.SelectOption(label="General Support", value="support"),
-            discord.SelectOption(label="Reports", value="report"),
-            discord.SelectOption(label="Appeals", value="appeal"),
-            discord.SelectOption(label="Partnership/Paid Ad", value="paid-ad")
-        ]
-    )
-        
-    view = TicketConfigView(ticket_system)
-    view.add_item(select)
-        
-    await interaction.response.send_message("Configure ticket types:", view=view, ephemeral=True)
 
 @bot.tree.command(name="ticket-create", description="Create a new ticket")
 async def ticket_create(interaction: discord.Interaction, ticket_type: str):
