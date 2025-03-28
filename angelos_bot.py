@@ -421,8 +421,8 @@ async def tickets_config(interaction: discord.Interaction, message: str = None):
         ephemeral=True
     )
 
-@bot.tree.command(name="ticket-setup", description="Śend the ticket message.")
-async def create_ticket(interaction: discord.Interaction):
+@bot.tree.command(name="ticket-setup", description="Send the ticket message.")
+async def ticket_setup(interaction: discord.Interaction):
     """Create a ticket via dropdown."""
     # Create the ticket selection view
     view = TicketCreateView(ticket_system)
@@ -436,10 +436,10 @@ async def create_ticket(interaction: discord.Interaction):
     
     try:
         # Send the embed and view in the current channel
-        await interaction.channel.send(embed=embed, view=view)
+        await interaction.response.send_message("Ticket setup initiated.", ephemeral=True)
         
-        # Respond with an ephemeral message
-        await interaction.response.send_message("Ticket message created", ephemeral=True)
+        # Send the actual ticket creation message in the current channel
+        await interaction.channel.send(embed=embed, view=view)
     
     except discord.HTTPException as e:
         print(f"Error in create-ticket: {e}")
@@ -451,8 +451,6 @@ async def create_ticket(interaction: discord.Interaction):
         except:
             # Fallback error logging if both response methods fail
             print(f"Critical error in ticket setup: {e}")
-
-
         
 # Modify create_ticket_channel to use configured welcome message
 async def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
