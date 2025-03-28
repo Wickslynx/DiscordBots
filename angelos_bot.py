@@ -6,6 +6,9 @@ import os
 import asyncio
 from discord.ext import tasks
 from pathlib import Path
+import random
+import string
+
 
 Path("storage").mkdir(exist_ok=True)
 
@@ -104,7 +107,7 @@ class Bot(commands.Bot):
         }
         
         super().__init__(
-            command_prefix='/',
+            command_prefix='!',
             intents=intents,
             application_id='1336770228134088846'
         )
@@ -198,40 +201,106 @@ MODERATION_LOG_CHANNEL_ID = 1355192082284675083
 
 vote_counts = {}
 
-import discord
-from discord.ext import commands
-import random
-import string
 
 # Global variables to store ticket configuration
 TICKET_CONFIG = {}
 ACTIVE_TICKETS = {}
 
+class TicketSystem:
+    def __init__(self, bot):
+        self.bot = bot
+        self.ticket_config = {}
+        self.active_tickets = {}
+
+    def generate_ticket_id(self):
+        """Generate a unique ticket ID."""
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+    async def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
+        """Create a ticket channel with specified configuration."""
+        # Generate unique ticket ID
+        ticket_id = self.generate_ticket_id()
+        
+        # Create channel name
+        channel_name = f"{ticket_type}-{interaction.user.name[:4]}-{ticket_id}"
+        
+        # Create ticket channel
+        try:
+            # You'll need to replace TICKET_CATEGORY_ID with an actual category ID
+            category = interaction.guild.get_channel(TICKET_CATEGORY_ID)
+            ticket_channel = await interaction.guild.create_text_channel(
+                name=channel_name, 
+                category=category
+            )
+            
+            # Get required roles
+            ownership_team = interaction.guild.get_role(OT_ID)
+            internal_affairs = interaction.guild.get_role(IA_ID)
+            
+            # Set channel permissions
+            await ticket_channel.set_permissions(interaction.user, read_messages=True, send_messages=True)
+            await ticket_channel.set_permissions(ownership_team, read_messages=True, send_messages=True)
+            await ticket_channel.set_permissions(internal_affairs, read_messages=True, send_messages=True)
+            
+            # Create welcome embed
+            embed = discord.Embed(
+                title=f"{ticket_type.capitalize()} Ticket",
+                description=f"Welcome to {ticket_type} ticket support!\nTicket ID: {ticket_id}",
+                color=discord.Color.blue()
+            )
+            embed.add_field(name="Opened By", value=interaction.user.mention, inline=False)
+            
+            # Send embed with ticket view
+            view = TicketView(self, ticket_id)
+            await ticket_channel.send(embed=embed, view=view)
+            
+            # Track active tickets
+            if interaction.guild.id not in self.active_tickets:
+                self.active_tickets[interaction.guild.id] = {}
+            self.active_tickets[interaction.guild.id][ticket_id] = {
+                'channel_id': ticket_channel.id,
+                'creator': interaction.user.id,
+                'type': ticket_type
+            }
+            
+            return ticket_channel
+        
+        except Exception as e:
+            await interaction.response.send_message(f"Failed to create ticket: {str(e)}", ephemeral=True)
+            return None
+
 class TicketConfigView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, ticket_system):
         super().__init__()
+        self.ticket_system = ticket_system
         
     @discord.ui.select(cls=discord.ui.Select, placeholder="Select Ticket Type", custom_id="ticket_type_select")
     async def ticket_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        # Store the selected ticket type in the configuration
+        """Handle ticket type selection."""
         ticket_type = select.values[0]
-        TICKET_CONFIG[interaction.guild.id] = {
+        
+        # Store the selected ticket type in the configuration
+        self.ticket_system.ticket_config[interaction.guild.id] = {
             "ticket_types": ticket_type,
             "welcome_message": f"Welcome to {ticket_type} ticket support!"
         }
+        
         await interaction.response.send_message(f"Ticket type set to {ticket_type}", ephemeral=True)
 
 class TicketView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, ticket_system, ticket_id):
         super().__init__(timeout=None)
+        self.ticket_system = ticket_system
+        self.ticket_id = ticket_id
     
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="claim_ticket")
     async def claim_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Logic to claim the ticket
+        """Handle ticket claim."""
         ticket_channel = interaction.channel
         await ticket_channel.edit(name=f"{ticket_channel.name}-claimed")
         await ticket_channel.send(f"{interaction.user.mention} has claimed this ticket.")
         
+        # Disable claim button
         for item in self.children:
             if item.custom_id == "claim_ticket":
                 item.disabled = True
@@ -241,129 +310,130 @@ class TicketView(discord.ui.View):
     
     @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Logic to close the ticket
+        """Handle ticket closure."""
         ticket_channel = interaction.channel
         
         # Remove from active tickets
-        if interaction.guild.id in ACTIVE_TICKETS:
-            ticket_id = ticket_channel.name.split('-')[-1]
-            if ticket_id in ACTIVE_TICKETS[interaction.guild.id]:
-                del ACTIVE_TICKETS[interaction.guild.id][ticket_id]
+        if interaction.guild.id in self.ticket_system.active_tickets:
+            if self.ticket_id in self.ticket_system.active_tickets[interaction.guild.id]:
+                del self.ticket_system.active_tickets[interaction.guild.id][self.ticket_id]
         
         await ticket_channel.delete()
+        
 
-def generate_ticket_id():
-    """Generate a unique ticket ID."""
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+ ticket_system = TicketSystem(bot)
 
-async def create_ticket_channel(ctx, ticket_type):
-    """Create a ticket channel with specified configuration."""
-    # Generate unique ticket ID
-    ticket_id = generate_ticket_id()
-    
-    # Create channel name
-    channel_name = f"{ticket_type}-{ctx.author.name[:4]}-{ticket_id}"
-    
-    # Create ticket channel
-    category = ctx.guild.get_channel(TICKET_CATEGORY_ID)  # You'll need to set this ID
-    ticket_channel = await ctx.guild.create_text_channel(
-        name=channel_name, 
-        category=category
-    )
-    
-    # Get required roles
-    ownership_team = ctx.guild.get_role(OT_ID)
-    internal_affairs = ctx.guild.get_role(IA_ID)  # You'll need to set this ID
-    
-    # Set channel permissions
-    await ticket_channel.set_permissions(ctx.author, read_messages=True, send_messages=True)
-    await ticket_channel.set_permissions(ownership_team, read_messages=True, send_messages=True)
-    await ticket_channel.set_permissions(internal_affairs, read_messages=True, send_messages=True)
-    
-    # Create welcome embed
-    embed = discord.Embed(
-        title=f"{ticket_type.capitalize()} Ticket",
-        description=TICKET_CONFIG.get(ctx.guild.id, {}).get('welcome_message', 'Welcome to ticket support!'),
-        color=discord.Color.blue()
-    )
-    
-    # Send embed with ticket view
-    ticket_view = TicketView()
-    ticket_message = await ticket_channel.send(embed=embed, view=ticket_view)
-    
-    # Track active tickets
-    if ctx.guild.id not in ACTIVE_TICKETS:
-        ACTIVE_TICKETS[ctx.guild.id] = {}
-    ACTIVE_TICKETS[ctx.guild.id][ticket_id] = {
-        'channel_id': ticket_channel.id,
-        'creator': ctx.author.id,
-        'type': ticket_type
-    }
-    
-    return ticket_channel
-
-@commands.command(name='tickets-config')
-@commands.has_permissions(administrator=True)
-async def tickets_config(ctx):
+@bot.tree.command(name="tickets-config", description="Configure ticket types")
+@app_commands.checks.has_permissions(administrator=True)
+async def tickets_config(interaction: discord.Interaction):
     """Configure ticket types for the server."""
     # Create a select menu with ticket types
     select = discord.ui.Select(
         custom_id="ticket_type_select",
-        placeholder="Select Ticket Type",
+        placeholder="Select Ticket Type:",
         options=[
-            discord.SelectOption(label="Support", value="support"),
-            discord.SelectOption(label="Complaint", value="complaint"),
-            discord.SelectOption(label="Appeal", value="appeal"),
-            discord.SelectOption(label="General", value="general")
+            discord.SelectOption(label="General Support", value="support"),
+            discord.SelectOption(label="Reports", value="report"),
+            discord.SelectOption(label="Appeals", value="appeal"),
+            discord.SelectOption(label="Partnership/Paid Ad", value="paid-ad")
         ]
     )
-    
-    view = TicketConfigView()
+        
+    view = TicketConfigView(ticket_system)
     view.add_item(select)
-    
-    await ctx.send("Configure ticket types:", view=view)
+        
+    await interaction.response.send_message("Configure ticket types:", view=view, ephemeral=True)
 
-@commands.command(name='create-ticket')
-async def create_ticket(ctx, ticket_type=None):
+@bot.tree.command(name="ticket-create", description="Create a new ticket")
+@app_commands.describe(ticket_type="Type of ticket to create")
+async def ticket_create(interaction: discord.Interaction, ticket_type: str):
+    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+        return
+        
     """Create a new ticket."""
-    # Check if ticket type is configured
-    if not ticket_type:
-        await ctx.send("Please specify a ticket type.")
-        return
-    
     # Validate ticket type
-    if ctx.guild.id not in TICKET_CONFIG or ticket_type not in TICKET_CONFIG[ctx.guild.id]['ticket_types']:
-        await ctx.send("Invalid ticket type. Use the tickets-config command to set up ticket types.")
+    if (interaction.guild.id not in ticket_system.ticket_config or 
+        ticket_type not in ticket_system.ticket_config[interaction.guild.id]['ticket_types']):
+        await interaction.response.send_message(
+            "Invalid ticket type. Use the tickets-config command to set up ticket types.", 
+            ephemeral=True
+        )
         return
-    
+        
     # Create ticket channel
-    ticket_channel = await create_ticket_channel(ctx, ticket_type)
-    await ctx.send(f"Ticket created! Check {ticket_channel.mention}")
+    ticket_channel = await ticket_system.create_ticket_channel(interaction, ticket_type)
+    if ticket_channel:
+        await interaction.response.send_message(
+            f"Ticket created! Check {ticket_channel.mention}", 
+            ephemeral=True
+        )
 
-@commands.command(name='ticket-add')
-async def ticket_add(ctx, member: discord.Member):
+@bot.tree.command(name="ticket-add", description="Add a user to the current ticket")
+@app_commands.describe(member="Member to add to the ticket")
+async def ticket_add(interaction: discord.Interaction, member: discord.Member):
+    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+        return
+        
     """Add a user to the current ticket channel."""
-    await ctx.channel.set_permissions(member, read_messages=True, send_messages=True)
-    await ctx.send(f"{member.mention} has been added to the ticket.")
+    # Verify this is a ticket channel
+    if not interaction.channel.name.startswith(("support-", "report-", "appeal-", "paid-ad-")):
+        await interaction.response.send_message(
+            "This command can only be used in a ticket channel.", 
+            ephemeral=True
+        )
+        return
+        
+    await interaction.channel.set_permissions(member, read_messages=True, send_messages=True)
+    await interaction.response.send_message(f"{member.mention} has been added to the ticket.")
 
-@commands.command(name='ticket-remove')
-async def ticket_remove(ctx, member: discord.Member):
+@bot.tree.command(name="ticket-remove", description="Remove a user from the current ticket")
+@app_commands.describe(member="Member to remove from the ticket")
+async def ticket_remove(interaction: discord.Interaction, member: discord.Member):
+    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+        return
+        
     """Remove a user from the current ticket channel."""
-    await ctx.channel.set_permissions(member, read_messages=False, send_messages=False)
-    await ctx.send(f"{member.mention} has been removed from the ticket.")
+     # Verify this is a ticket channel
+    if not interaction.channel.name.startswith(("support-", "report-", "appeal-", "paid-ad-")):
+        await interaction.response.send_message(
+            "This command can only be used in a ticket channel.", 
+            ephemeral=True
+        )
+        return
+        
+    await interaction.channel.set_permissions(member, read_messages=False, send_messages=False)
+    await interaction.response.send_message(f"{member.mention} has been removed from the ticket.")
 
-@commands.command(name='ticket-force-close')
-@commands.has_permissions(administrator=True)
-async def ticket_force_close(ctx):
-    """Force close the current ticket channel."""
+@bot.tree.command(name="ticket-force-close", description="Forcibly close the current ticket")
+@app_commands.checks.has_permissions(administrator=True)
+async def ticket_force_close(interaction: discord.Interaction):
+    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+        return
+        
+    # Verify this is a ticket channel
+    if not interaction.channel.name.startswith(("support-", "report-", "appeal-", "paid-ad-")):
+        await interaction.response.send_message(
+            "This command can only be used in a ticket channel.", 
+            ephemeral=True
+        )
+        return
+        
     # Remove from active tickets
-    if ctx.guild.id in ACTIVE_TICKETS:
-        ticket_id = ctx.channel.name.split('-')[-1]
-        if ticket_id in ACTIVE_TICKETS[ctx.guild.id]:
-            del ACTIVE_TICKETS[ctx.guild.id][ticket_id]
-    
-    await ctx.channel.delete()
-
+    if interaction.guild.id in ticket_system.active_tickets:
+            ticket_id = interaction.channel.name.split('-')[-1]
+            if ticket_id in ticket_system.active_tickets[interaction.guild.id]:
+            del ticket_system.active_tickets[interaction.guild.id][ticket_id]
+        
+    await interaction.channel.delete()
+        
 
 
 async def get_channel_by_id(guild, channel_id):
