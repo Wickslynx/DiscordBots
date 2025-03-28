@@ -217,57 +217,96 @@ class TicketSystem:
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
     async def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
-        """Create a ticket channel with specified configuration."""
-        # Generate unique ticket ID
-        ticket_id = self.generate_ticket_id()
-        
-        # Create channel name
-        channel_name = f"{ticket_type}-{interaction.user.name[:4]}-{ticket_id}"
-        
-        # Create ticket channel
-        try:
-            # You'll need to replace TICKET_CATEGORY_ID with an actual category ID
-            category = interaction.guild.get_channel(1307742965657112627)
-            ticket_channel = await interaction.guild.create_text_channel(
-                name=channel_name, 
-                category=category
+    """Create a ticket channel with specified configuration."""
+    # Generate unique ticket ID
+    ticket_id = self.generate_ticket_id()
+    
+    # Create channel name
+    channel_name = f"{ticket_type}-{interaction.user.name[:4]}-{ticket_id}"
+    
+    # Create ticket channel
+    try:
+        # Use a constant for the ticket category ID
+        category = interaction.guild.get_channel(1307742965657112627)
+        if not category:
+            await interaction.response.send_message(
+                "Ticket category not found. Please contact an administrator.", 
+                ephemeral=True
             )
-            
-            # Get required roles
-            ownership_team = interaction.guild.get_role(OT_ID)
-            internal_affairs = interaction.guild.get_role(INTERNAL_AFFAIRS_ID)
-            
-            # Set channel permissions
-            await ticket_channel.set_permissions(interaction.user, read_messages=True, send_messages=True)
-            await ticket_channel.set_permissions(ownership_team, read_messages=True, send_messages=True)
-            await ticket_channel.set_permissions(internal_affairs, read_messages=True, send_messages=True)
-            
-            # Create welcome embed
-            embed = discord.Embed(
-                title=f"{ticket_type.capitalize()} Ticket",
-                description=f"Welcome to {ticket_type} ticket support!\nTicket ID: {ticket_id}",
-                color=discord.Color.blue()
-            )
-            embed.add_field(name="Opened By", value=interaction.user.mention, inline=False)
-            
-            # Send embed with ticket view
-            view = TicketView(self, ticket_id)
-            await ticket_channel.send(embed=embed, view=view)
-            
-            # Track active tickets
-            if interaction.guild.id not in self.active_tickets:
-                self.active_tickets[interaction.guild.id] = {}
-            self.active_tickets[interaction.guild.id][ticket_id] = {
-                'channel_id': ticket_channel.id,
-                'creator': interaction.user.id,
-                'type': ticket_type
-            }
-            
-            return ticket_channel
-        
-        except Exception as e:
-            await interaction.response.send_message(f"Failed to create ticket: {str(e)}", ephemeral=True)
             return None
+        
+        ticket_channel = await interaction.guild.create_text_channel(
+            name=channel_name, 
+            category=category
+        )
+        
+        # Get required roles
+        ownership_team = interaction.guild.get_role(OT_ID)
+        internal_affairs = interaction.guild.get_role(INTERNAL_AFFAIRS_ID)
+        
+        # Verify roles exist
+        if not ownership_team or not internal_affairs:
+            await interaction.response.send_message(
+                "Required roles not found. Please contact an administrator.", 
+                ephemeral=True
+            )
+            await ticket_channel.delete()
+            return None
+        
+        # Set channel permissions
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            ownership_team: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            internal_affairs: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+        await ticket_channel.edit(overwrites=overwrites)
+        
+        # Get welcome message (use default if not configured)
+        welcome_message = (
+            self.ticket_config.get(interaction.guild.id, {}).get('welcome_message', 
+            f"Welcome to {ticket_type.replace('-', ' ').title()} ticket support!")
+        )
+        
+        # Create welcome embed
+        embed = discord.Embed(
+            title=f"{ticket_type.capitalize()} Ticket",
+            description=welcome_message,
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Ticket ID", value=ticket_id, inline=False)
+        embed.add_field(name="Created By", value=interaction.user.mention, inline=False)
+        
+        # Send embed with ticket view
+        ticket_view = TicketView(self, ticket_id)
+        await ticket_channel.send(f"{user.mention}")
+        await ticket_channel.send(embed=embed, view=ticket_view)
+        
+        # Track active tickets
+        if interaction.guild.id not in self.active_tickets:
+            self.active_tickets[interaction.guild.id] = {}
+        self.active_tickets[interaction.guild.id][ticket_id] = {
+            'channel_id': ticket_channel.id,
+            'creator': interaction.user.id,
+            'type': ticket_type
+        }
+        
+        return ticket_channel
+    
+    except Exception as e:
+        print(f"Error creating ticket channel: {e}")
+        try:
+            await interaction.response.send_message(
+                f"Failed to create ticket: {str(e)}", 
+                ephemeral=True
+            )
+        except:
+            # If response already sent, use followup
+            await interaction.followup.send(
+                f"Failed to create ticket: {str(e)}", 
+                ephemeral=True
+            )
+        return None
 
         
 class TicketCreateView(discord.ui.View):
