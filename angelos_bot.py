@@ -361,11 +361,11 @@ async def create_ticket(interaction: discord.Interaction):
     )
     
     try:
+        # Respond initially with an ephemeral message
+        await interaction.response.send_message("Ticket message created", ephemeral=True)
+        
         # Send the embed and view in the current channel
         await interaction.channel.send(embed=embed, view=view)
-        
-        # Respond privately to the user
-        await interaction.response.send_message("Ticket message created", ephemeral=True)
     
     except Exception as e:
         print(f"Error in create-ticket: {e}")
@@ -373,6 +373,7 @@ async def create_ticket(interaction: discord.Interaction):
             "Failed to create ticket selection. Please try again.",
             ephemeral=True
         )
+
         
 # Modify create_ticket_channel to use configured welcome message
 async def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
