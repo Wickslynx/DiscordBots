@@ -344,7 +344,6 @@ async def tickets_config(interaction: discord.Interaction):
     await interaction.response.send_message("Configure ticket types:", view=view, ephemeral=True)
 
 @bot.tree.command(name="ticket-create", description="Create a new ticket")
-@app_commands.describe(ticket_type="Type of ticket to create")
 async def ticket_create(interaction: discord.Interaction, ticket_type: str):
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
@@ -370,7 +369,6 @@ async def ticket_create(interaction: discord.Interaction, ticket_type: str):
         )
 
 @bot.tree.command(name="ticket-add", description="Add a user to the current ticket")
-@app_commands.describe(member="Member to add to the ticket")
 async def ticket_add(interaction: discord.Interaction, member: discord.Member):
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
@@ -390,7 +388,6 @@ async def ticket_add(interaction: discord.Interaction, member: discord.Member):
     await interaction.response.send_message(f"{member.mention} has been added to the ticket.")
 
 @bot.tree.command(name="ticket-remove", description="Remove a user from the current ticket")
-@app_commands.describe(member="Member to remove from the ticket")
 async def ticket_remove(interaction: discord.Interaction, member: discord.Member):
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
