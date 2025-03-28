@@ -308,6 +308,41 @@ class TicketSystem:
                 )
             return None
 
+
+class TicketView(discord.ui.View):
+    def __init__(self, ticket_system, ticket_id):
+        super().__init__(timeout=None)
+        self.ticket_system = ticket_system
+        self.ticket_id = ticket_id
+
+
+
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="claim_ticket")
+    async def claim_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Handle ticket claim."""
+        ticket_channel = interaction.channel
+        await ticket_channel.edit(name=f"{ticket_channel.name}-claimed")
+        await ticket_channel.send(f"{interaction.user.mention} has claimed this ticket.")
+        
+        # Disable claim button
+        for item in self.children:
+            if item.custom_id == "claim_ticket":
+                item.disabled = True
+                
+        await interaction.message.edit(view=self)
+        await interaction.response.send_message("Ticket claimed!", ephemeral=True)
+
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Handle ticket closure."""
+        ticket_channel = interaction.channel
+
+        # Remove from active tickets
+        if interaction.guild.id in self.ticket_system.active_tickets:
+            if self.ticket_id in self.ticket_system.active_tickets[interaction.guild.id]:
+               del self.ticket_system.active_tickets[interaction.guild.id][self.ticket_id]
+
+        await ticket_channel.delete()
         
 class TicketCreateView(discord.ui.View):
     def __init__(self, ticket_system):
