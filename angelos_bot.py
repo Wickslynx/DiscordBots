@@ -268,12 +268,19 @@ class TicketSystem:
         except Exception as e:
             await interaction.response.send_message(f"Failed to create ticket: {str(e)}", ephemeral=True)
             return None
-class TicketTypeSelect(discord.ui.Select):
+
+        
+class TicketConfigView(discord.ui.View):
     def __init__(self, ticket_system):
+        super().__init__()
         self.ticket_system = ticket_system
         
-        # Explicitly set all required fields
-        options = [
+    @discord.ui.select(
+        custom_id="ticket_type_select", 
+        placeholder="Select Ticket Types", 
+        min_values=1, 
+        max_values=4,  # Allow selecting multiple types
+        options=[
             discord.SelectOption(
                 label="General Support", 
                 value="support", 
@@ -295,45 +302,61 @@ class TicketTypeSelect(discord.ui.Select):
                 description="Partnership or paid advertisement inquiry"
             )
         ]
-        
-        super().__init__(
-            placeholder="Select Ticket Type", 
-            min_values=1, 
-            max_values=1, 
-            options=options,
-            custom_id="ticket_type_select"
-        )
-    
-    async def callback(self, interaction: discord.Interaction):
+    )
+    async def ticket_select(self, interaction: discord.Interaction, select: discord.ui.Select):
         """Handle ticket type selection."""
-        ticket_type = self.values[0]
+        # Get selected ticket types
+        selected_types = select.values
         
-        # Store the selected ticket type in the configuration
+        # Store the selected ticket types in the configuration
         self.ticket_system.ticket_config[interaction.guild.id] = {
-            "ticket_types": ticket_type,
-            "welcome_message": f"Welcome to {ticket_type} ticket support!"
+            "ticket_types": selected_types,
+            "welcome_messages": {
+                type: f"Welcome to {type.replace('-', ' ').title()} ticket support!" 
+                for type in selected_types
+            }
         }
         
-        await interaction.response.send_message(f"Ticket type set to {ticket_type}", ephemeral=True)
-
-class TicketConfigView(discord.ui.View):
-    def __init__(self, ticket_system):
-        super().__init__()
-        self.add_item(TicketTypeSelect(ticket_system))
+        # Create a readable list of selected types
+        types_list = ", ".join(type.replace('-', ' ').title() for type in selected_types)
+        
+        await interaction.response.send_message(
+            f"Ticket types configured: {types_list}", 
+            ephemeral=True
+        )
 
 @bot.tree.command(name="tickets-config", description="Configure ticket types")
+@app_commands.checks.has_permissions(administrator=True)
 async def tickets_config(interaction: discord.Interaction):
     """Configure ticket types for the server."""
+    # Create an embed to explain the ticket configuration
+    embed = discord.Embed(
+        title="🎫 Ticket System Configuration",
+        description="Select the ticket types you want to enable for your server. "
+                    "You can choose multiple types of tickets to support different needs.",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="Available Types", value=(
+        "• General Support\n"
+        "• Reports\n"
+        "• Appeals\n"
+        "• Partnership/Paid Ad"
+    ), inline=False)
+    embed.set_footer(text="Select the types you want to enable below.")
+
+    # Create the view with the select menu
     view = TicketConfigView(ticket_system)
     
     try:
-        await interaction.response.send_message("Configure ticket types:", view=view, ephemeral=True)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     except Exception as e:
         print(f"Error in tickets-config: {e}")
         try:
             await interaction.followup.send(f"Failed to send ticket configuration: {e}", ephemeral=True)
         except:
             pass
+
+
             
 
 class TicketView(discord.ui.View):
