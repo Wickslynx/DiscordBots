@@ -227,7 +227,7 @@ class TicketSystem:
         # Create ticket channel
         try:
             # You'll need to replace TICKET_CATEGORY_ID with an actual category ID
-            category = interaction.guild.get_channel(TICKET_CATEGORY_ID)
+            category = interaction.guild.get_channel(1307742965657112627)
             ticket_channel = await interaction.guild.create_text_channel(
                 name=channel_name, 
                 category=category
