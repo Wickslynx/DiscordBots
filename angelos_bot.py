@@ -848,40 +848,37 @@ async def ban(interaction: discord.Interaction, member: discord.Member, *, reaso
 
 
 
-bot.command(name="ban")
-async def ban(interaction: discord.Interaction, member: discord.Member, *, reason: str = "No reason provided"):
-    # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to ban members.", ephemeral=True)
+@bot.command(name="ban")
+async def ban(ctx, member: discord.Member, *, reason: str = "No reason provided"):
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to ban members.")
         return
 
     try:
-        # Send DM to user about the ban (optional)
         try:
-            await member.send(f"You have been banned from {interaction.guild.name}. Reason: {reason}")
+            await member.send(f"You have been banned from {ctx.guild.name}. Reason: {reason}")
         except:
             pass
 
-        # Ban the member
         await member.ban(reason=reason)
 
-        # Log the ban in a moderation log channel
-        log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="Member Banned",
-                description=f"**User:** {member.mention}\n**Moderator:** {interaction.user.mention}\n**Reason:** {reason}",
-                color=discord.Color.red(),
-                timestamp=datetime.utcnow()
+                description=f"**User:** {member.mention}\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
+                color=discord.Color.red()
             )
             await log_channel.send(embed=embed)
 
-        await interaction.response.send_message(f"{member.name} has been banned.", ephemeral=True)
+        await ctx.send(f"{member.name} has been banned.")
     except discord.Forbidden:
-        await interaction.response.send_message("I do not have permission to ban this user.", ephemeral=True)
+        await ctx.send("I do not have permission to ban this user.")
     except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+        await ctx.send(f"An error occurred: {str(e)}")
+
+
 
 
 
@@ -921,35 +918,36 @@ async def unban(interaction: discord.Interaction, user_id: str, *, reason: str =
 
 
 @bot.command(name="unban")
-async def unban(interaction: discord.Interaction, user_id: str, *, reason: str = "No reason provided"):
+async def unban(ctx, user_id: str, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to unban members.", ephemeral=True)
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to unban members.")
         return
 
     try:
         # Unban the user
-        await interaction.guild.unban(discord.Object(id=int(user_id)), reason=reason)
+        await ctx.guild.unban(discord.Object(id=int(user_id)), reason=reason)
 
         # Log the unban in a moderation log channel
-        log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="Member Unbanned",
-                description=f"**User ID:** {user_id}\n**Moderator:** {interaction.user.mention}\n**Reason:** {reason}",
+                description=f"**User ID:** {user_id}\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
                 color=discord.Color.green(),
                 timestamp=datetime.utcnow()
             )
             await log_channel.send(embed=embed)
 
-        await interaction.response.send_message(f"User with ID {user_id} has been unbanned.", ephemeral=True)
+        await ctx.send(f"User with ID {user_id} has been unbanned.")
     except discord.NotFound:
-        await interaction.response.send_message("User not found in the ban list.", ephemeral=True)
+        await ctx.send("User not found in the ban list.")
     except discord.Forbidden:
-        await interaction.response.send_message("I do not have permission to unban this user.", ephemeral=True)
+        await ctx.send("I do not have permission to unban this user.")
     except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+        await ctx.send(f"An error occurred: {str(e)}")
+
 
 #-------------------------------
 
@@ -1002,7 +1000,7 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
         await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
 
-@bot.command(name="mute")
+@bot.tree.command(name="mute", description="Mute a member with an optional duration and reason.")
 async def mute(interaction: discord.Interaction, member: discord.Member, duration: int = None, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
@@ -1010,12 +1008,12 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
         await interaction.response.send_message("You do not have permission to mute members.", ephemeral=True)
         return
 
-    # Find or create muted role
+    # Find or create the Muted role
     muted_role = discord.utils.get(interaction.guild.roles, name="Muted")
     if not muted_role:
         try:
             muted_role = await interaction.guild.create_role(name="Muted")
-            # Optionally, set up permission overwrites to prevent speaking
+            # Set permissions for the role
             for channel in interaction.guild.channels:
                 await channel.set_permissions(muted_role, send_messages=False)
         except Exception as e:
@@ -1023,6 +1021,7 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
             return
 
     try:
+        # Add the Muted role to the member
         await member.add_roles(muted_role, reason=reason)
 
         # Log the mute in a moderation log channel
@@ -1030,17 +1029,17 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
         if log_channel:
             embed = discord.Embed(
                 title="Member Muted",
-                description=f"**User:** {member.mention}\n**Moderator:** {interaction.user.mention}\n**Reason:** {reason}" + 
+                description=f"**User:** {member.mention}\n**Moderator:** {interaction.user.mention}\n**Reason:** {reason}" +
                 (f"\n**Duration:** {duration} minutes" if duration else ""),
                 color=discord.Color.orange(),
                 timestamp=datetime.utcnow()
             )
             await log_channel.send(embed=embed)
 
-        # If duration is specified, schedule unmute
+        # Notify the moderator and schedule unmute if a duration is provided
         if duration:
             await interaction.response.send_message(f"{member.name} has been muted for {duration} minutes.", ephemeral=True)
-            await asyncio.sleep(duration * 60)
+            await asyncio.sleep(duration * 60)  # Wait for the specified duration
             await member.remove_roles(muted_role, reason="Mute duration expired")
         else:
             await interaction.response.send_message(f"{member.name} has been muted.", ephemeral=True)
@@ -1049,6 +1048,7 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
         await interaction.response.send_message("I do not have permission to mute this user.", ephemeral=True)
     except Exception as e:
         await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+
 
 #----------------------------------
 
@@ -1088,38 +1088,44 @@ async def unmute(interaction: discord.Interaction, member: discord.Member, *, re
 
 
 @bot.command(name="unmute")
-async def unmute(interaction: discord.Interaction, member: discord.Member, *, reason: str = "No reason provided"):
+async def unmute(ctx, member: discord.Member, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to unmute members.", ephemeral=True)
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to unmute members.")
         return
 
     # Find muted role
-    muted_role = discord.utils.get(interaction.guild.roles, name="Muted")
+    muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
     if not muted_role:
-        await interaction.response.send_message("Muted role not found.", ephemeral=True)
+        await ctx.send("Muted role not found.")
         return
 
     try:
+        # Remove the Muted role from the member
         await member.remove_roles(muted_role, reason=reason)
 
         # Log the unmute in a moderation log channel
-        log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="Member Unmuted",
-                description=f"**User:** {member.mention}\n**Moderator:** {interaction.user.mention}\n**Reason:** {reason}",
+                description=f"**User:** {member.mention}\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
                 color=discord.Color.green(),
                 timestamp=datetime.utcnow()
             )
             await log_channel.send(embed=embed)
 
-        await interaction.response.send_message(f"{member.name} has been unmuted.", ephemeral=True)
+        # Notify the moderator of success
+        await ctx.send(f"{member.name} has been unmuted.")
     except discord.Forbidden:
-        await interaction.response.send_message("I do not have permission to unmute this user.", ephemeral=True)
+        # Handle case where bot lacks permissions
+        await ctx.send("I do not have permission to unmute this user.")
     except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+        # Handle general errors
+        await ctx.send(f"An error occurred: {str(e)}")
+
+
 
 # ----------------------------------
 
@@ -1172,49 +1178,56 @@ async def warn(interaction: discord.Interaction, member: discord.Member, *, reas
 
 
 @bot.command(name="warn")
-async def warn(interaction: discord.Interaction, member: discord.Member, *, reason: str):
+async def warn(ctx, member: discord.Member, *, reason: str):
     # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to warn members.", ephemeral=True)
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to warn members.")
         return
 
-    # Load existing warnings
-    warnings = load_warnings()
-    user_id = str(member.id)
-
-    # Initialize warnings for user if not exist
-    if user_id not in warnings:
-        warnings[user_id] = []
-
-    # Add new warning
-    warnings[user_id].append({
-        "moderator_id": interaction.user.id,
-        "reason": reason,
-        "timestamp": datetime.utcnow().isoformat()
-    })
-
-    # Save warnings
-    save_warnings(warnings)
-
-    # Log the warning in a moderation log channel
-    log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
-    if log_channel:
-        embed = discord.Embed(
-            title="Member Warned",
-            description=f"**User:** {member.mention}\n**Moderator:** {interaction.user.mention}\n**Reason:** {reason}",
-            color=discord.Color.yellow(),
-            timestamp=datetime.utcnow()
-        )
-        await log_channel.send(embed=embed)
-
-    # Notify the warned user
     try:
-        await member.send(f"You have been warned in {interaction.guild.name}. Reason: {reason}")
-    except:
-        pass
+        # Load existing warnings
+        warnings = load_warnings()  # Replace with your actual function to load warnings
+        user_id = str(member.id)
 
-    await interaction.response.send_message(f"{member.name} has been warned.", ephemeral=True)
+        # Initialize warnings for the user if they don't already exist
+        if user_id not in warnings:
+            warnings[user_id] = []
+
+        # Add the new warning
+        warnings[user_id].append({
+            "moderator_id": ctx.author.id,
+            "reason": reason,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+        # Save warnings
+        save_warnings(warnings)  # Replace with your actual function to save warnings
+
+        # Log the warning in a moderation log channel
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        if log_channel:
+            embed = discord.Embed(
+                title="Member Warned",
+                description=f"**User:** {member.mention}\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
+                color=discord.Color.yellow(),
+                timestamp=datetime.utcnow()
+            )
+            await log_channel.send(embed=embed)
+
+        # Notify the warned user
+        try:
+            await member.send(f"You have been warned in {ctx.guild.name}. Reason: {reason}")
+        except:
+            pass  # Ignore if the user cannot be messaged
+
+        # Confirm the action to the moderator
+        await ctx.send(f"{member.name} has been warned.")
+    except Exception as e:
+        await ctx.send(f"An error occurred: {str(e)}")
+
+
+# -----------------------------------
 
 @bot.tree.command(name="notes", description="View warnings for a member")
 async def notes(interaction: discord.Interaction, member: discord.Member = None):
@@ -1286,35 +1299,36 @@ async def purge(interaction: discord.Interaction, amount: int):
     except Exception as e:
         await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
-
 @bot.command(name="purge")
-async def purge(interaction: discord.Interaction, amount: int):
+async def purge(ctx, amount: int):
     # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to purge messages.", ephemeral=True)
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to purge messages.")
         return
 
     try:
         # Delete messages
-        deleted = await interaction.channel.purge(limit=amount)
+        deleted = await ctx.channel.purge(limit=amount)
 
         # Log the purge in a moderation log channel
-        log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="Channel Purged",
-                description=f"**Moderator:** {interaction.user.mention}\n**Messages Deleted:** {len(deleted)}",
+                description=f"**Moderator:** {ctx.author.mention}\n**Messages Deleted:** {len(deleted)}",
                 color=discord.Color.blue(),
                 timestamp=datetime.utcnow()
             )
             await log_channel.send(embed=embed)
 
-        await interaction.response.send_message(f"Deleted {len(deleted)} messages.", ephemeral=True)
+        # Notify the moderator of success
+        await ctx.send(f"Deleted {len(deleted)} messages.")
     except discord.Forbidden:
-        await interaction.response.send_message("I do not have permission to delete messages.", ephemeral=True)
+        await ctx.send("I do not have permission to delete messages.")
     except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+        await ctx.send(f"An error occurred: {str(e)}")
+
 
 
 
@@ -1354,38 +1368,41 @@ async def lock(interaction: discord.Interaction, channel: discord.TextChannel = 
 
 
 @bot.command(name="lock")
-async def lock(interaction: discord.Interaction, channel: discord.TextChannel = None):
+async def lock(ctx, channel: discord.TextChannel = None):
     # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to lock channels.", ephemeral=True)
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to lock channels.")
         return
 
-    # If no channel specified, use current channel
-    channel = channel or interaction.channel
+    # If no channel is specified, use the current channel
+    channel = channel or ctx.channel
 
     try:
         # Overwrite permissions to prevent sending messages
-        await channel.set_permissions(interaction.guild.default_role, send_messages=False)
+        await channel.set_permissions(ctx.guild.default_role, send_messages=False)
 
         # Log the channel lock in a moderation log channel
-        log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="Channel Locked",
-                description=f"**Channel:** {channel.mention}\n**Moderator:** {interaction.user.mention}",
+                description=f"**Channel:** {channel.mention}\n**Moderator:** {ctx.author.mention}",
                 color=discord.Color.red(),
                 timestamp=datetime.utcnow()
             )
             await log_channel.send(embed=embed)
 
-        await interaction.response.send_message(f"{channel.mention} has been locked.", ephemeral=True)
+        # Notify the moderator of success
+        await ctx.send(f"{channel.mention} has been locked.")
     except discord.Forbidden:
-        await interaction.response.send_message("I do not have permission to lock this channel.", ephemeral=True)
+        await ctx.send("I do not have permission to lock this channel.")
     except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+        await ctx.send(f"An error occurred: {str(e)}")
 
 
+
+#-----------------------
 
         
 @bot.tree.command(name="unlock", description="Unlock a channel")
@@ -1422,37 +1439,40 @@ async def unlock(interaction: discord.Interaction, channel: discord.TextChannel 
 
 
 @bot.command(name="unlock")
-async def unlock(interaction: discord.Interaction, channel: discord.TextChannel = None):
+async def unlock(ctx, channel: discord.TextChannel = None):
     # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to unlock channels.", ephemeral=True)
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to unlock channels.")
         return
 
-    # If no channel specified, use current channel
-    channel = channel or interaction.channel
+    # If no channel is specified, use the current channel
+    channel = channel or ctx.channel
 
     try:
         # Restore default permissions
-        await channel.set_permissions(interaction.guild.default_role, send_messages=True)
+        await channel.set_permissions(ctx.guild.default_role, send_messages=True)
 
         # Log the channel unlock in a moderation log channel
-        log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="Channel Unlocked",
-                description=f"**Channel:** {channel.mention}\n**Moderator:** {interaction.user.mention}",
+                description=f"**Channel:** {channel.mention}\n**Moderator:** {ctx.author.mention}",
                 color=discord.Color.green(),
                 timestamp=datetime.utcnow()
             )
             await log_channel.send(embed=embed)
 
-        await interaction.response.send_message(f"{channel.mention} has been unlocked.", ephemeral=True)
+        # Notify the moderator of success
+        await ctx.send(f"{channel.mention} has been unlocked.")
     except discord.Forbidden:
-        await interaction.response.send_message("I do not have permission to unlock this channel.", ephemeral=True)
+        await ctx.send("I do not have permission to unlock this channel.")
     except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
-        
+        await ctx.send(f"An error occurred: {str(e)}")
+
+
+#--------------------
 
 @bot.tree.command(name="slowmode", description="Set channel slowmode")
 async def slowmode(interaction: discord.Interaction, seconds: int, channel: discord.TextChannel = None):
@@ -1489,36 +1509,38 @@ async def slowmode(interaction: discord.Interaction, seconds: int, channel: disc
 
 
 @bot.command(name="slowmode")
-async def slowmode(interaction: discord.Interaction, seconds: int, channel: discord.TextChannel = None):
+async def slowmode(ctx, seconds: int, channel: discord.TextChannel = None):
     # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to set slowmode.", ephemeral=True)
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to set slowmode.")
         return
 
-    # If no channel specified, use current channel
-    channel = channel or interaction.channel
+    # If no channel is specified, use the current channel
+    channel = channel or ctx.channel
 
     try:
         # Set slowmode
         await channel.edit(slowmode_delay=seconds)
 
         # Log the slowmode change in a moderation log channel
-        log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="Slowmode Set",
-                description=f"**Channel:** {channel.mention}\n**Moderator:** {interaction.user.mention}\n**Delay:** {seconds} seconds",
+                description=f"**Channel:** {channel.mention}\n**Moderator:** {ctx.author.mention}\n**Delay:** {seconds} seconds",
                 color=discord.Color.blue(),
                 timestamp=datetime.utcnow()
             )
             await log_channel.send(embed=embed)
 
-        await interaction.response.send_message(f"Slowmode set to {seconds} seconds in {channel.mention}.", ephemeral=True)
+        # Notify the moderator of success
+        await ctx.send(f"Slowmode set to {seconds} seconds in {channel.mention}.")
     except discord.Forbidden:
-        await interaction.response.send_message("I do not have permission to set slowmode.", ephemeral=True)
+        await ctx.send("I do not have permission to set slowmode.")
     except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
+        await ctx.send(f"An error occurred: {str(e)}")
+
 
 
 
