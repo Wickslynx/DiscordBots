@@ -325,7 +325,6 @@ class TicketCreateView(discord.ui.View):
             )
 
 @bot.tree.command(name="tickets-config", description="Configure ticket messages")
-@app_commands.checks.has_permissions(administrator=True)
 async def tickets_config(interaction: discord.Interaction, message: str = None):
     """Configure welcome message for tickets."""
     # If no message provided, prompt for one
