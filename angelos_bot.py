@@ -347,7 +347,7 @@ async def tickets_config(interaction: discord.Interaction, message: str = None):
         ephemeral=True
     )
 
-@bot.tree.command(name="create-ticket", description="Open a new ticket")
+@bot.tree.command(name="ticket-setup", description="Open a new ticket")
 async def create_ticket(interaction: discord.Interaction):
     """Create a ticket via dropdown."""
     # Create the ticket selection view
