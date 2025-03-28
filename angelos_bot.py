@@ -361,14 +361,19 @@ async def create_ticket(interaction: discord.Interaction):
     )
     
     try:
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
+        # Send the embed and view in the current channel
+        await interaction.channel.send(embed=embed, view=view)
+        
+        # Respond privately to the user
+        await interaction.response.send_message("Ticket message created", ephemeral=True)
+    
     except Exception as e:
         print(f"Error in create-ticket: {e}")
         await interaction.response.send_message(
-            "Failed to create ticket selection. Please try again.", 
+            "Failed to create ticket selection. Please try again.",
             ephemeral=True
         )
-
+        
 # Modify create_ticket_channel to use configured welcome message
 async def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
     """Create a ticket channel with specified configuration."""
@@ -388,7 +393,7 @@ async def create_ticket_channel(self, interaction: discord.Interaction, ticket_t
         
         # Get required roles
         ownership_team = interaction.guild.get_role(OT_ID)
-        internal_affairs = interaction.guild.get_role(IA_ID)
+        internal_affairs = interaction.guild.get_role(INTERNAL_AFFAIRS_ID)
         
         # Set channel permissions
         await ticket_channel.set_permissions(interaction.user, read_messages=True, send_messages=True)
