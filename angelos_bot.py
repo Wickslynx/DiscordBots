@@ -567,27 +567,7 @@ async def ticket_add(interaction: discord.Interaction, member: discord.Member):
     # Send a follow-up message
     await interaction.followup.send(f"{member.mention} has been added to the ticket.")
 
-@bot.tree.command(name="ticket-remove", description="Remove a user from the current ticket")
-async def ticket_remove(interaction: discord.Interaction, member: discord.Member):
-    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
-    if role not in interaction.user.roles:
-        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
-        return
-        
-    """Remove a user from the current ticket channel."""
-    # Verify this is a ticket channel
-    if not interaction.channel.name.startswith(("support-", "report-", "appeal-", "paid-ad-")):
-        await interaction.response.send_message(
-            "This command can only be used in a ticket channel.", 
-            ephemeral=True
-        )
-        return
-    
-    # Acknowledge the interaction first
-    await interaction.response.defer(ephemeral=True)
-    
-    await interaction.channel.set_permissions(member, read_messages=False, send_messages=False)
-    await interaction.followup.send(f"{member.mention} has been removed from the ticket.")
+
 
 @bot.tree.command(name="ticket-remove", description="Remove a user from the current ticket")
 async def ticket_remove(interaction: discord.Interaction, member: discord.Member):
@@ -609,7 +589,7 @@ async def ticket_remove(interaction: discord.Interaction, member: discord.Member
     await interaction.response.send_message(f"{member.mention} has been removed from the ticket.", ephemeral=True)
 
 
-@bot.tree.command(name="ticket-force-close", description="Close the current ticket")
+@bot.tree.command(name="ticket-close", description="Close the current ticket")
 async def ticket_close(interaction: discord.Interaction):
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
