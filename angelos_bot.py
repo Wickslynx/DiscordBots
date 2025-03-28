@@ -540,6 +540,8 @@ async def ticket_create(interaction: discord.Interaction, ticket_type: str):
             f"Ticket created! Check {ticket_channel.mention}", 
             ephemeral=True
         )
+
+
 @bot.tree.command(name="ticket-add", description="Add a user to the current ticket")
 async def ticket_add(interaction: discord.Interaction, member: discord.Member):
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
@@ -556,11 +558,36 @@ async def ticket_add(interaction: discord.Interaction, member: discord.Member):
         )
         return
     
-    # Modify channel permissions first
+    # Acknowledge the interaction first
+    await interaction.response.defer(ephemeral=True)
+    
+    # Modify channel permissions 
     await interaction.channel.set_permissions(member, read_messages=True, send_messages=True)
     
-    # Then respond to the interaction
-    await interaction.response.send_message(f"{member.mention} has been added to the ticket.", ephemeral=True)
+    # Send a follow-up message
+    await interaction.followup.send(f"{member.mention} has been added to the ticket.")
+
+@bot.tree.command(name="ticket-remove", description="Remove a user from the current ticket")
+async def ticket_remove(interaction: discord.Interaction, member: discord.Member):
+    role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if role not in interaction.user.roles:
+        await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
+        return
+        
+    """Remove a user from the current ticket channel."""
+    # Verify this is a ticket channel
+    if not interaction.channel.name.startswith(("support-", "report-", "appeal-", "paid-ad-")):
+        await interaction.response.send_message(
+            "This command can only be used in a ticket channel.", 
+            ephemeral=True
+        )
+        return
+    
+    # Acknowledge the interaction first
+    await interaction.response.defer(ephemeral=True)
+    
+    await interaction.channel.set_permissions(member, read_messages=False, send_messages=False)
+    await interaction.followup.send(f"{member.mention} has been removed from the ticket.")
 
 @bot.tree.command(name="ticket-remove", description="Remove a user from the current ticket")
 async def ticket_remove(interaction: discord.Interaction, member: discord.Member):
@@ -582,8 +609,8 @@ async def ticket_remove(interaction: discord.Interaction, member: discord.Member
     await interaction.response.send_message(f"{member.mention} has been removed from the ticket.", ephemeral=True)
 
 
-@bot.tree.command(name="ticket-close", description="Close the current ticket")
-async def ticket_force_close(interaction: discord.Interaction):
+@bot.tree.command(name="ticket-force-close", description="Close the current ticket")
+async def ticket_close(interaction: discord.Interaction):
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
     if role not in interaction.user.roles:
         await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
@@ -596,15 +623,21 @@ async def ticket_force_close(interaction: discord.Interaction):
             ephemeral=True
         )
         return
-        
+    
+    # Acknowledge the interaction first
+    await interaction.response.defer(ephemeral=True)
+    
     # Remove from active tickets
     if interaction.guild.id in ticket_system.active_tickets:
         ticket_id = interaction.channel.name.split('-')[-1]
         if ticket_id in ticket_system.active_tickets[interaction.guild.id]:
             del ticket_system.active_tickets[interaction.guild.id][ticket_id]
     
-    # Respond first, then delete the channel
-    await interaction.response.send_message("Ticket is being forcibly closed.", ephemeral=True)
+    # Delete the channel
+    await interaction.channel.delete()
+    
+    # Optional: Send a follow-up message if the channel deletion fails
+    await interaction.followup.send("Ticket has been forcibly closed.")
     await interaction.channel.delete()
         
 
