@@ -198,6 +198,174 @@ MODERATION_LOG_CHANNEL_ID = 1355192082284675083
 
 vote_counts = {}
 
+import discord
+from discord.ext import commands
+import random
+import string
+
+# Global variables to store ticket configuration
+TICKET_CONFIG = {}
+ACTIVE_TICKETS = {}
+
+class TicketConfigView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+        
+    @discord.ui.select(cls=discord.ui.Select, placeholder="Select Ticket Type", custom_id="ticket_type_select")
+    async def ticket_select(self, interaction: discord.Interaction, select: discord.ui.Select):
+        # Store the selected ticket type in the configuration
+        ticket_type = select.values[0]
+        TICKET_CONFIG[interaction.guild.id] = {
+            "ticket_types": ticket_type,
+            "welcome_message": f"Welcome to {ticket_type} ticket support!"
+        }
+        await interaction.response.send_message(f"Ticket type set to {ticket_type}", ephemeral=True)
+
+class TicketView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="claim_ticket")
+    async def claim_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Logic to claim the ticket
+        ticket_channel = interaction.channel
+        await ticket_channel.edit(name=f"{ticket_channel.name}-claimed")
+        await ticket_channel.send(f"{interaction.user.mention} has claimed this ticket.")
+        
+        for item in self.children:
+            if item.custom_id == "claim_ticket":
+                item.disabled = True
+        
+        await interaction.message.edit(view=self)
+        await interaction.response.send_message("Ticket claimed!", ephemeral=True)
+    
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Logic to close the ticket
+        ticket_channel = interaction.channel
+        
+        # Remove from active tickets
+        if interaction.guild.id in ACTIVE_TICKETS:
+            ticket_id = ticket_channel.name.split('-')[-1]
+            if ticket_id in ACTIVE_TICKETS[interaction.guild.id]:
+                del ACTIVE_TICKETS[interaction.guild.id][ticket_id]
+        
+        await ticket_channel.delete()
+
+def generate_ticket_id():
+    """Generate a unique ticket ID."""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+async def create_ticket_channel(ctx, ticket_type):
+    """Create a ticket channel with specified configuration."""
+    # Generate unique ticket ID
+    ticket_id = generate_ticket_id()
+    
+    # Create channel name
+    channel_name = f"{ticket_type}-{ctx.author.name[:4]}-{ticket_id}"
+    
+    # Create ticket channel
+    category = ctx.guild.get_channel(TICKET_CATEGORY_ID)  # You'll need to set this ID
+    ticket_channel = await ctx.guild.create_text_channel(
+        name=channel_name, 
+        category=category
+    )
+    
+    # Get required roles
+    ownership_team = ctx.guild.get_role(OT_ID)
+    internal_affairs = ctx.guild.get_role(IA_ID)  # You'll need to set this ID
+    
+    # Set channel permissions
+    await ticket_channel.set_permissions(ctx.author, read_messages=True, send_messages=True)
+    await ticket_channel.set_permissions(ownership_team, read_messages=True, send_messages=True)
+    await ticket_channel.set_permissions(internal_affairs, read_messages=True, send_messages=True)
+    
+    # Create welcome embed
+    embed = discord.Embed(
+        title=f"{ticket_type.capitalize()} Ticket",
+        description=TICKET_CONFIG.get(ctx.guild.id, {}).get('welcome_message', 'Welcome to ticket support!'),
+        color=discord.Color.blue()
+    )
+    
+    # Send embed with ticket view
+    ticket_view = TicketView()
+    ticket_message = await ticket_channel.send(embed=embed, view=ticket_view)
+    
+    # Track active tickets
+    if ctx.guild.id not in ACTIVE_TICKETS:
+        ACTIVE_TICKETS[ctx.guild.id] = {}
+    ACTIVE_TICKETS[ctx.guild.id][ticket_id] = {
+        'channel_id': ticket_channel.id,
+        'creator': ctx.author.id,
+        'type': ticket_type
+    }
+    
+    return ticket_channel
+
+@commands.command(name='tickets-config')
+@commands.has_permissions(administrator=True)
+async def tickets_config(ctx):
+    """Configure ticket types for the server."""
+    # Create a select menu with ticket types
+    select = discord.ui.Select(
+        custom_id="ticket_type_select",
+        placeholder="Select Ticket Type",
+        options=[
+            discord.SelectOption(label="Support", value="support"),
+            discord.SelectOption(label="Complaint", value="complaint"),
+            discord.SelectOption(label="Appeal", value="appeal"),
+            discord.SelectOption(label="General", value="general")
+        ]
+    )
+    
+    view = TicketConfigView()
+    view.add_item(select)
+    
+    await ctx.send("Configure ticket types:", view=view)
+
+@commands.command(name='create-ticket')
+async def create_ticket(ctx, ticket_type=None):
+    """Create a new ticket."""
+    # Check if ticket type is configured
+    if not ticket_type:
+        await ctx.send("Please specify a ticket type.")
+        return
+    
+    # Validate ticket type
+    if ctx.guild.id not in TICKET_CONFIG or ticket_type not in TICKET_CONFIG[ctx.guild.id]['ticket_types']:
+        await ctx.send("Invalid ticket type. Use the tickets-config command to set up ticket types.")
+        return
+    
+    # Create ticket channel
+    ticket_channel = await create_ticket_channel(ctx, ticket_type)
+    await ctx.send(f"Ticket created! Check {ticket_channel.mention}")
+
+@commands.command(name='ticket-add')
+async def ticket_add(ctx, member: discord.Member):
+    """Add a user to the current ticket channel."""
+    await ctx.channel.set_permissions(member, read_messages=True, send_messages=True)
+    await ctx.send(f"{member.mention} has been added to the ticket.")
+
+@commands.command(name='ticket-remove')
+async def ticket_remove(ctx, member: discord.Member):
+    """Remove a user from the current ticket channel."""
+    await ctx.channel.set_permissions(member, read_messages=False, send_messages=False)
+    await ctx.send(f"{member.mention} has been removed from the ticket.")
+
+@commands.command(name='ticket-force-close')
+@commands.has_permissions(administrator=True)
+async def ticket_force_close(ctx):
+    """Force close the current ticket channel."""
+    # Remove from active tickets
+    if ctx.guild.id in ACTIVE_TICKETS:
+        ticket_id = ctx.channel.name.split('-')[-1]
+        if ticket_id in ACTIVE_TICKETS[ctx.guild.id]:
+            del ACTIVE_TICKETS[ctx.guild.id][ticket_id]
+    
+    await ctx.channel.delete()
+
+
+
 async def get_channel_by_id(guild, channel_id):
     return guild.get_channel(channel_id)
 
