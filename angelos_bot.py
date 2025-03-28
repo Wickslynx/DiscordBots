@@ -999,25 +999,24 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
     except Exception as e:
         await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
-
-@bot.tree.command(name="mute", description="Mute a member with an optional duration and reason.")
-async def mute(interaction: discord.Interaction, member: discord.Member, duration: int = None, *, reason: str = "No reason provided"):
+@bot.command(name="mute")
+async def mute(ctx, member: discord.Member, duration: int = None, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
-    moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
-        await interaction.response.send_message("You do not have permission to mute members.", ephemeral=True)
+    moderator_role = discord.utils.get(ctx.guild.roles, id=MODERATOR_ROLE_ID)
+    if moderator_role not in ctx.author.roles:
+        await ctx.send("You do not have permission to mute members.")
         return
 
     # Find or create the Muted role
-    muted_role = discord.utils.get(interaction.guild.roles, name="Muted")
+    muted_role = discord.utils.get(ctx.guild.roles, name="Muted")
     if not muted_role:
         try:
-            muted_role = await interaction.guild.create_role(name="Muted")
+            muted_role = await ctx.guild.create_role(name="Muted")
             # Set permissions for the role
-            for channel in interaction.guild.channels:
+            for channel in ctx.guild.channels:
                 await channel.set_permissions(muted_role, send_messages=False)
         except Exception as e:
-            await interaction.response.send_message(f"Failed to create muted role: {str(e)}", ephemeral=True)
+            await ctx.send(f"Failed to create muted role: {str(e)}")
             return
 
     try:
@@ -1025,11 +1024,11 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
         await member.add_roles(muted_role, reason=reason)
 
         # Log the mute in a moderation log channel
-        log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
+        log_channel = ctx.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="Member Muted",
-                description=f"**User:** {member.mention}\n**Moderator:** {interaction.user.mention}\n**Reason:** {reason}" +
+                description=f"**User:** {member.mention}\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}" +
                 (f"\n**Duration:** {duration} minutes" if duration else ""),
                 color=discord.Color.orange(),
                 timestamp=datetime.utcnow()
@@ -1038,17 +1037,16 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
 
         # Notify the moderator and schedule unmute if a duration is provided
         if duration:
-            await interaction.response.send_message(f"{member.name} has been muted for {duration} minutes.", ephemeral=True)
+            await ctx.send(f"{member.name} has been muted for {duration} minutes.")
             await asyncio.sleep(duration * 60)  # Wait for the specified duration
             await member.remove_roles(muted_role, reason="Mute duration expired")
         else:
-            await interaction.response.send_message(f"{member.name} has been muted.", ephemeral=True)
+            await ctx.send(f"{member.name} has been muted.")
 
     except discord.Forbidden:
-        await interaction.response.send_message("I do not have permission to mute this user.", ephemeral=True)
+        await ctx.send("I do not have permission to mute this user.")
     except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
-
+        await ctx.send(f"An error occurred: {str(e)}")
 
 #----------------------------------
 
