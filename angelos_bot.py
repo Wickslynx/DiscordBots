@@ -324,7 +324,6 @@ class TicketView(discord.ui.View):
 ticket_system = TicketSystem(bot)
 
 @bot.tree.command(name="tickets-config", description="Configure ticket types")
-@app_commands.checks.has_permissions(administrator=True)
 async def tickets_config(interaction: discord.Interaction):
     """Configure ticket types for the server."""
     # Create a select menu with ticket types
