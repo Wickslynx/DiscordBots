@@ -114,6 +114,7 @@ class Bot(commands.Bot):
 
     async def setup_hook(self):
         self.add_view(ReactionButtons())
+        self.add_view(TicketView(ticket_system, None))
         self.daily_check.start()
         
         global vote_counts
