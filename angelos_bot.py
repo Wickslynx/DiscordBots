@@ -575,7 +575,7 @@ class TicketCreateView(discord.ui.View):
 
 # Update the ticket-setup command to include the banner
 @bot.tree.command(name="ticket-setup", description="Send the ticket message.")
-async def ticket_setup(interaction: discord.Interaction):
+async def (interaction: discord.Interaction):
     """Create a ticket via dropdown."""
     # Check for proper permissions
     if not interaction.user.guild_permissions.administrator and not any(
@@ -625,40 +625,6 @@ async def ticket_setup(interaction: discord.Interaction):
             # Fallback error logging if both response methods fail
             print(f"Critical error in ticket setup: {e}")
             
-
-
-
-
-@bot.tree.command(name="ticket-setup", description="Send the ticket message.")
-async def ticket_setup(interaction: discord.Interaction):
-    """Create a ticket via dropdown."""
-    # Create the ticket selection view
-    view = TicketCreateView(ticket_system)
-    
-    # Create an embed to explain ticket creation
-    embed = discord.Embed(
-        title="🎫 Create a Ticket",
-        description="Select the type of ticket you want to create below.",
-        color=discord.Color.blue()
-    )
-    
-    try:
-        # Send the embed and view in the current channel
-        await interaction.response.send_message("Ticket setup initiated.", ephemeral=True)
-        
-        # Send the actual ticket creation message in the current channel
-        await interaction.channel.send(embed=embed, view=view)
-    
-    except discord.HTTPException as e:
-        print(f"Error in create-ticket: {e}")
-        try:
-            await interaction.followup.send(
-                "Failed to create ticket selection. Please try again.",
-                ephemeral=True
-            )
-        except:
-            # Fallback error logging if both response methods fail
-            print(f"Critical error in ticket setup: {e}")
         
 
 
