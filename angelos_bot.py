@@ -321,7 +321,7 @@ class TicketView(discord.ui.View):
         self.ticket_system = ticket_system
         self.ticket_id = ticket_id
 
-    @discord.ui.button(label="🔒 Claim", style=discord.ButtonStyle.green, custom_id="claim_ticket")
+    @discord.ui.button(label="📥 Claim", style=discord.ButtonStyle.gray, custom_id="claim_ticket")
     async def claim_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle ticket claim."""
         moderator_role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
@@ -341,7 +341,7 @@ class TicketView(discord.ui.View):
         await interaction.message.edit(view=self)
         await interaction.response.send_message("Ticket claimed!", ephemeral=True)
 
-    @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
+    @discord.ui.button(label="🔒 Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle ticket closure confirmation."""
         # Send the confirmation message with closure reason options
@@ -364,9 +364,9 @@ class TicketCloseView(discord.ui.View):
     async def no_response_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.close_ticket(interaction, "User didn't respond")
 
-    @discord.ui.button(label="Not allowed", style=discord.ButtonStyle.red, custom_id="close_reason_not_allowed")
+    @discord.ui.button(label="Placeholder", style=discord.ButtonStyle.red, custom_id="close_reason_not_allowed")
     async def not_allowed_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.close_ticket(interaction, "Not allowed")
+        await self.close_ticket(interaction, "Placeholder")
 
     @discord.ui.button(label="Other", style=discord.ButtonStyle.gray, custom_id="close_reason_other")
     async def other_button(self, interaction: discord.Interaction, button: discord.ui.Button):
