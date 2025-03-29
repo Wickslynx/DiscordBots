@@ -324,6 +324,12 @@ class TicketView(discord.ui.View):
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="claim_ticket")
     async def claim_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle ticket claim."""
+
+        moderator_role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+        if moderator_role not in interaction.user.roles:
+            await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
+            return
+        
         ticket_channel = interaction.channel
         await ticket_channel.edit(name=f"{ticket_channel.name}-claimed")
         await ticket_channel.send(f"{interaction.user.mention} has claimed this ticket.")
