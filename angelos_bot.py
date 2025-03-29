@@ -350,7 +350,7 @@ class TicketView(discord.ui.View):
         
 class TicketCreateView(discord.ui.View):
     def __init__(self, ticket_system):
-        super().__init__()
+        super().__init__(timeout=None)
         self.ticket_system = ticket_system
     
     @discord.ui.select(
