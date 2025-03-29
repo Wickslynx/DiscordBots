@@ -611,20 +611,37 @@ class TicketConfigView(discord.ui.View):
                 # Modal was closed without submission
                 pass
 
+# Replace your existing tickets-config command with this version
 
-@bot.tree.command(name="ticket-config", description="Configure the ticket system")
-async def ticket_config(interaction: discord.Interaction):
-    # Check for admin permissions
+@bot.tree.command(name="tickets-config", description="Configure the ticket system")
+@app_commands.describe(option="What to configure (or leave empty for the menu)")
+async def tickets_config(interaction: discord.Interaction, option: Optional[str] = None):
+    """Configure ticket messages and settings"""
+    # Check for appropriate permissions
     if not interaction.user.guild_permissions.administrator and not any(
         role.id == INTERNAL_AFFAIRS_ID for role in interaction.user.roles
     ):
         await interaction.response.send_message(
-            "You need administrator permissions to configure the ticket system.",
+            "You need appropriate permissions to configure the ticket system.",
             ephemeral=True
         )
         return
     
-    # Show the configuration view
+    # If option is provided, handle the legacy text-only configuration
+    if option is not None:
+        # Store the welcome message
+        if interaction.guild.id not in ticket_system.ticket_config:
+            ticket_system.ticket_config[interaction.guild.id] = {}
+        
+        ticket_system.ticket_config[interaction.guild.id]['welcome_message'] = option
+        
+        await interaction.response.send_message(
+            f"Ticket welcome message set to:\n```\n{option}\n```", 
+            ephemeral=True
+        )
+        return
+    
+    # Show the configuration view if no option is provided
     view = TicketConfigView(ticket_system)
     
     embed = discord.Embed(
@@ -634,6 +651,187 @@ async def ticket_config(interaction: discord.Interaction):
     )
     
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+# Add these classes after the command definition
+
+class TicketConfigModal(discord.ui.Modal):
+    def __init__(self, title: str, default_text: str = ""):
+        super().__init__(title=title)
+        
+        self.message_input = discord.ui.TextInput(
+            label="Enter your message",
+            style=discord.TextStyle.paragraph,
+            placeholder="Enter your custom message here...",
+            default=default_text,
+            required=True,
+            max_length=1000
+        )
+        self.add_item(self.message_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        return self.message_input.value
+
+class TicketConfigView(discord.ui.View):
+    def __init__(self, ticket_system):
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.ticket_system = ticket_system
+    
+    @discord.ui.select(
+        custom_id="ticket_config_select", 
+        placeholder="Select what to configure", 
+        min_values=1, 
+        max_values=1,
+        options=[
+            discord.SelectOption(
+                label="Welcome Message", 
+                value="welcome_message", 
+                description="Change the default welcome message for all tickets"
+            ),
+            discord.SelectOption(
+                label="Support Ticket Message", 
+                value="support_message", 
+                description="Change the message for support tickets"
+            ),
+            discord.SelectOption(
+                label="Report Ticket Message", 
+                value="report_message", 
+                description="Change the message for report tickets"
+            ),
+            discord.SelectOption(
+                label="Appeal Ticket Message", 
+                value="appeal_message", 
+                description="Change the message for appeal tickets"
+            ),
+            discord.SelectOption(
+                label="Partnership/Ad Ticket Message", 
+                value="paid_ad_message", 
+                description="Change the message for partnership/ad tickets"
+            ),
+            discord.SelectOption(
+                label="Set Ticket Banner", 
+                value="ticket_banner", 
+                description="Upload an image to show at the top of ticket messages"
+            ),
+            discord.SelectOption(
+                label="Preview Current Settings", 
+                value="preview", 
+                description="See your current ticket configuration"
+            )
+        ]
+    )
+    async def config_select(self, interaction: discord.Interaction, select: discord.ui.Select):
+        guild_id = interaction.guild.id
+        
+        # Initialize config for guild if not already done
+        if guild_id not in self.ticket_system.ticket_config:
+            self.ticket_system.ticket_config[guild_id] = {
+                'welcome_message': "Welcome to ticket support!",
+                'support_message': "Please describe your issue and someone will assist you shortly.",
+                'report_message': "Please provide details about what you're reporting and any evidence.",
+                'appeal_message': "Please explain why you believe this decision should be reconsidered.",
+                'paid_ad_message': "Please provide details about your partnership or advertisement request.",
+                'ticket_banner': None
+            }
+        
+        config = self.ticket_system.ticket_config[guild_id]
+        selected_option = select.values[0]
+        
+        if selected_option == "preview":
+            # Create an embed to show current settings
+            embed = discord.Embed(
+                title="Current Ticket Configuration",
+                description="Here are your current ticket settings:",
+                color=discord.Color.blue()
+            )
+            
+            embed.add_field(name="Welcome Message", value=config.get('welcome_message', "Not set"), inline=False)
+            embed.add_field(name="Support Ticket Message", value=config.get('support_message', "Not set"), inline=False)
+            embed.add_field(name="Report Ticket Message", value=config.get('report_message', "Not set"), inline=False)
+            embed.add_field(name="Appeal Ticket Message", value=config.get('appeal_message', "Not set"), inline=False)
+            embed.add_field(name="Partnership/Ad Message", value=config.get('paid_ad_message', "Not set"), inline=False)
+            
+            banner_status = "Set" if config.get('ticket_banner') else "Not set"
+            embed.add_field(name="Ticket Banner", value=banner_status, inline=False)
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        elif selected_option == "ticket_banner":
+            # Prompt for banner upload
+            await interaction.response.send_message(
+                "Please upload an image to use as the ticket banner. Send the image in your next message.",
+                ephemeral=True
+            )
+            
+            def check(message):
+                return message.author.id == interaction.user.id and message.attachments
+            
+            try:
+                # Wait for user to upload an image
+                message = await self.ticket_system.bot.wait_for('message', check=check, timeout=60.0)
+                
+                # Check if the attachment is an image
+                if not message.attachments[0].content_type.startswith('image/'):
+                    await interaction.followup.send("The uploaded file is not an image. Please try again with an image file.", ephemeral=True)
+                    return
+                
+                # Store the image URL
+                config['ticket_banner'] = message.attachments[0].url
+                
+                # Let the user know it was successful
+                await interaction.followup.send("Ticket banner has been set successfully!", ephemeral=True)
+                
+                # Delete the user's message to keep the channel clean
+                try:
+                    await message.delete()
+                except:
+                    pass
+                
+            except asyncio.TimeoutError:
+                await interaction.followup.send("You took too long to upload an image. Please try again.", ephemeral=True)
+        
+        else:
+            # Handle text configuration options
+            message_types = {
+                "welcome_message": "Welcome Message",
+                "support_message": "Support Ticket Message",
+                "report_message": "Report Ticket Message",
+                "appeal_message": "Appeal Ticket Message",
+                "paid_ad_message": "Partnership/Ad Ticket Message"
+            }
+            
+            # Get current value for this setting
+            current_text = config.get(selected_option, "")
+            
+            # Create and show modal for text input
+            modal = TicketConfigModal(f"Edit {message_types[selected_option]}", current_text)
+            await interaction.response.send_modal(modal)
+            
+            # Wait for modal submission
+            try:
+                interaction_response = await self.ticket_system.bot.wait_for(
+                    "modal_submit",
+                    check=lambda i: i.data["custom_id"] == modal.custom_id and i.user.id == interaction.user.id,
+                    timeout=300.0
+                )
+                
+                # Get the submitted value
+                submitted_value = interaction_response.data["components"][0]["components"][0]["value"]
+                
+                # Update the configuration
+                config[selected_option] = submitted_value
+                
+                # Respond to the modal submission
+                await interaction_response.response.send_message(
+                    f"{message_types[selected_option]} has been updated!", 
+                    ephemeral=True
+                )
+                
+            except asyncio.TimeoutError:
+                # Modal timed out
+                pass
+                
 
 
 # Modify the ticket creation process to use the custom messages:
