@@ -313,18 +313,16 @@ class TicketSystem:
             return None
 
 
+
 class TicketView(discord.ui.View):
     def __init__(self, ticket_system, ticket_id):
         super().__init__(timeout=None)
         self.ticket_system = ticket_system
         self.ticket_id = ticket_id
 
-
-
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="claim_ticket")
     async def claim_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle ticket claim."""
-
         moderator_role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
         if moderator_role not in interaction.user.roles:
             await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
@@ -344,15 +342,81 @@ class TicketView(discord.ui.View):
 
     @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="close_ticket")
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Handle ticket closure."""
-        ticket_channel = interaction.channel
+        """Handle ticket closure confirmation."""
+        # Send the confirmation message with closure reason options
+        close_view = TicketCloseView(self.ticket_system, self.ticket_id)
+        await interaction.response.send_message("Why do you want to close this ticket?", view=close_view, ephemeral=False)
 
+
+class TicketCloseView(discord.ui.View):
+    """View for ticket closure confirmation with reason selection."""
+    def __init__(self, ticket_system, ticket_id):
+        super().__init__(timeout=None)
+        self.ticket_system = ticket_system
+        self.ticket_id = ticket_id
+
+    @discord.ui.button(label="Solved", style=discord.ButtonStyle.green, custom_id="close_reason_solved")
+    async def solved_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.close_ticket(interaction, "Solved")
+
+    @discord.ui.button(label="User didn't respond", style=discord.ButtonStyle.gray, custom_id="close_reason_no_response")
+    async def no_response_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.close_ticket(interaction, "User didn't respond")
+
+    @discord.ui.button(label="Not allowed", style=discord.ButtonStyle.red, custom_id="close_reason_not_allowed")
+    async def not_allowed_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.close_ticket(interaction, "Not allowed")
+
+    @discord.ui.button(label="Other", style=discord.ButtonStyle.gray, custom_id="close_reason_other")
+    async def other_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.close_ticket(interaction, "Other")
+
+    async def close_ticket(self, interaction: discord.Interaction, reason: str):
+        """Handle the actual ticket closure with the selected reason."""
+        ticket_channel = interaction.channel
+        
+        # Log the closure reason in the ticket channel
+        await ticket_channel.send(f"Ticket closed by {interaction.user.mention}. Reason: {reason}")
+        
+        # Send logs to the logging channel
+        TICKET_LOGS_CHANNEL_ID = TICKET_CHANNEL_ID  # Replace with your actual logs channel ID
+        logs_channel = interaction.guild.get_channel(TICKET_LOGS_CHANNEL_ID)
+        
+        if logs_channel:
+            # Create a detailed embed for logging
+            embed = discord.Embed(
+                title="Ticket Closed",
+                description=f"Ticket **#{self.ticket_id}** has been closed",
+                color=discord.Color.red(),
+                timestamp=datetime.datetime.now()
+            )
+            embed.add_field(name="Closed By", value=interaction.user.mention, inline=True)
+            embed.add_field(name="Reason", value=reason, inline=True)
+            embed.add_field(name="Channel", value=ticket_channel.name, inline=False)
+            
+            # You can add more info like ticket creation time, original requester, etc.
+            # if you store that information in your ticket system
+            
+            await logs_channel.send(embed=embed)
+        else:
+            # If we can't find the logs channel, log to console
+            print(f"Could not find logs channel with ID {TICKET_LOGS_CHANNEL_ID}")
+        
         # Remove from active tickets
         if interaction.guild.id in self.ticket_system.active_tickets:
             if self.ticket_id in self.ticket_system.active_tickets[interaction.guild.id]:
-               del self.ticket_system.active_tickets[interaction.guild.id][self.ticket_id]
-
+                del self.ticket_system.active_tickets[interaction.guild.id][self.ticket_id]
+        
+        # Disable all buttons to prevent further interactions
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(view=self)
+        
+        # Optional: Add a short delay before deleting the channel
+        await interaction.response.send_message(f"Closing ticket. Reason: {reason}", ephemeral=True)
+        await asyncio.sleep(3)  # Wait 3 seconds before deleting
         await ticket_channel.delete()
+        
         
 class TicketCreateView(discord.ui.View):
     def __init__(self, ticket_system):
