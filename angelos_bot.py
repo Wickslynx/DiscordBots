@@ -649,16 +649,28 @@ def save_reaction_role_data(message_id, role_emoji_map):
     with open('storage/reaction_roles.json', 'w') as file:
         json.dump(data, file, indent=4)
         
-def save_warnings(warnings):
-    with open('storage/warnings.json', 'w') as file:
-        json.dump(warnings, file, indent=4)
-
 def load_warnings():
+    """Load warnings from JSON file."""
     try:
-        with open('storage/warnings.json', 'r') as file:
-            return json.load(file)
-    except FileNotFoundError:
+        if os.path.exists(WARNINGS_FILE):
+            with open(WARNINGS_FILE, 'r') as f:
+                content = f.read().strip()
+                if content:  # Check if file is not empty
+                    return json.loads(content)
+        # Return empty dict if file doesn't exist or is empty
         return {}
+    except json.JSONDecodeError as e:
+        print(f"Error loading warnings file: {e}")
+        # If file is corrupted, return empty dict and backup the bad file
+        if os.path.exists(WARNINGS_FILE):
+            os.rename(WARNINGS_FILE, f"{WARNINGS_FILE}.bak")
+        return {}
+
+def save_warnings(warnings):
+    """Save warnings to JSON file."""
+    with open(WARNINGS_FILE, 'w') as f:
+        json.dump(warnings, f, indent=4)
+        
         
 @bot.event
 async def on_raw_reaction_add(payload):
