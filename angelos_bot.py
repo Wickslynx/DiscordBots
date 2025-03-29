@@ -389,7 +389,7 @@ class TicketCloseView(discord.ui.View):
                 title="Ticket Closed",
                 description=f"Ticket **#{self.ticket_id}** has been closed",
                 color=discord.Color.red(),
-                timestamp=datetime.datetime.now()
+                timestamp=datetime.now()
             )
             embed.add_field(name="Closed By", value=interaction.user.mention, inline=True)
             embed.add_field(name="Reason", value=reason, inline=True)
