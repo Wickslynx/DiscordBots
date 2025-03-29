@@ -706,7 +706,7 @@ class TicketCreateView(discord.ui.View):
 
 # Update the ticket-setup command to include the banner
 @bot.tree.command(name="ticket-setup", description="Send the ticket message.")
-async def (interaction: discord.Interaction):
+async def ticket_setup(interaction: discord.Interaction):
     """Create a ticket via dropdown."""
     # Check for proper permissions
     if not interaction.user.guild_permissions.administrator and not any(
