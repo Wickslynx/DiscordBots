@@ -211,6 +211,137 @@ vote_counts = {}
 TICKET_CONFIG = {}
 ACTIVE_TICKETS = {}
 
+class TicketSystem:
+    def __init__(self, bot):
+        self.bot = bot
+        self.ticket_config = {}
+        self.active_tickets = {}
+        self.max_tickets_per_user = 4  # Maximum tickets per user
+
+    def generate_ticket_id(self):
+        """Generate a unique ticket ID."""
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    
+    def get_user_ticket_count(self, guild_id, user_id):
+        """Count how many active tickets a user has open."""
+        if guild_id not in self.active_tickets:
+            return 0
+            
+        count = 0
+        for ticket_data in self.active_tickets[guild_id].values():
+            if ticket_data['creator'] == user_id:
+                count += 1
+        return count
+
+    async def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
+        """Create a ticket channel with specified configuration."""
+        # Check if user has reached the maximum number of tickets
+        user_ticket_count = self.get_user_ticket_count(interaction.guild.id, interaction.user.id)
+        if user_ticket_count >= self.max_tickets_per_user:
+            await interaction.response.send_message(
+                f"You already have {user_ticket_count} active tickets. Please close some before creating new ones.", 
+                ephemeral=True
+            )
+            return None
+            
+        # Generate unique ticket ID
+        ticket_id = self.generate_ticket_id()
+        
+        # Create channel name
+        channel_name = f"{ticket_type}-{interaction.user.name[:4]}-{ticket_id}"
+        
+        # Create ticket channel
+        try:
+            # Use a constant for the ticket category ID
+            category = interaction.guild.get_channel(1307742965657112627)
+            if not category:
+                await interaction.response.send_message(
+                    "Ticket category not found. Please contact an administrator.", 
+                    ephemeral=True
+                )
+                return None
+            
+            ticket_channel = await interaction.guild.create_text_channel(
+                name=channel_name, 
+                category=category
+            )
+            
+            # Get required roles
+            ownership_team = interaction.guild.get_role(OT_ID)
+            internal_affairs = interaction.guild.get_role(INTERNAL_AFFAIRS_ID)
+            
+            # Verify roles exist
+            if not ownership_team or not internal_affairs:
+                await interaction.response.send_message(
+                    "Required roles not found. Please contact an administrator.", 
+                    ephemeral=True
+                )
+                await ticket_channel.delete()
+                return None
+            
+            # Set channel permissions
+            overwrites = {
+                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                ownership_team: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                internal_affairs: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            }
+            await ticket_channel.edit(overwrites=overwrites)
+            
+            # Get welcome message (use default if not configured)
+            welcome_message = (
+                self.ticket_config.get(interaction.guild.id, {}).get('welcome_message', 
+                f"Welcome to {ticket_type.replace('-', ' ').title()} ticket support!")
+            )
+            
+            # Create welcome embed
+            embed = discord.Embed(
+                title=f"{ticket_type.capitalize()} Ticket",
+                description=welcome_message,
+                color=discord.Color.blue()
+            )
+            embed.add_field(name="Ticket ID", value=ticket_id, inline=False)
+            embed.add_field(name="Created By", value=interaction.user.mention, inline=False)
+            
+            # Add ticket limit information
+            new_ticket_count = user_ticket_count + 1
+            embed.add_field(
+                name="Ticket Limit", 
+                value=f"You have {new_ticket_count}/{self.max_tickets_per_user} tickets open", 
+                inline=False
+            )
+            
+            # Send embed with ticket view
+            ticket_view = TicketView(self, ticket_id)
+            await ticket_channel.send(f"{interaction.user.mention}")
+            await ticket_channel.send(embed=embed, view=ticket_view)
+            
+            # Track active tickets
+            if interaction.guild.id not in self.active_tickets:
+                self.active_tickets[interaction.guild.id] = {}
+            self.active_tickets[interaction.guild.id][ticket_id] = {
+                'channel_id': ticket_channel.id,
+                'creator': interaction.user.id,
+                'type': ticket_type
+            }
+            
+            return ticket_channel
+        
+        except Exception as e:
+            print(f"Error creating ticket channel: {e}")
+            try:
+                await interaction.response.send_message(
+                    f"Failed to create ticket: {str(e)}", 
+                    ephemeral=True
+                )
+            except:
+                # If response already sent, use followup
+                await interaction.followup.send(
+                    f"Failed to create ticket: {str(e)}", 
+                    ephemeral=True
+                )
+            return None
+
 
 class TicketConfigModal(discord.ui.Modal):
     def __init__(self, title: str, default_text: str = ""):
