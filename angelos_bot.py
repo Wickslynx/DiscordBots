@@ -614,8 +614,7 @@ class TicketConfigView(discord.ui.View):
 # Replace your existing tickets-config command with this version
 
 @bot.tree.command(name="tickets-config", description="Configure the ticket system")
-@app_commands.describe(option="What to configure (or leave empty for the menu)")
-async def tickets_config(interaction: discord.Interaction, option: Optional[str] = None):
+async def tickets_config(interaction: discord.Interaction, option: str = None):
     """Configure ticket messages and settings"""
     # Check for appropriate permissions
     if not interaction.user.guild_permissions.administrator and not any(
