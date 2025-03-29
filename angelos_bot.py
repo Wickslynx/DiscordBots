@@ -321,7 +321,7 @@ class TicketView(discord.ui.View):
         self.ticket_system = ticket_system
         self.ticket_id = ticket_id
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="claim_ticket")
+    @discord.ui.button(label="🔒 Claim", style=discord.ButtonStyle.green, custom_id="claim_ticket")
     async def claim_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle ticket claim."""
         moderator_role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
