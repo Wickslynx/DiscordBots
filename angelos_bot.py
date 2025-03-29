@@ -349,6 +349,7 @@ class TicketView(discord.ui.View):
         self.ticket_system = ticket_system
         self.ticket_id = ticket_id
 
+
     @discord.ui.button(label="📥 Claim", style=discord.ButtonStyle.gray, custom_id="claim_ticket")
     async def claim_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle ticket claim."""
@@ -359,6 +360,30 @@ class TicketView(discord.ui.View):
         
         ticket_channel = interaction.channel
         await ticket_channel.edit(name=f"{ticket_channel.name}-claimed")
+        
+        # Find the creator and extract ticket ID
+        ticket_id = None
+        creator_id = None
+        
+        # Extract ticket ID from channel name
+        for part in ticket_channel.name.split('-'):
+            if len(part) == 6 and all(c in string.ascii_uppercase + string.digits for c in part):
+                ticket_id = part
+                break
+        
+        # Get creator from active tickets
+        if ticket_id and interaction.guild.id in self.ticket_system.active_tickets and ticket_id in self.ticket_system.active_tickets[interaction.guild.id]:
+            creator_id = self.ticket_system.active_tickets[interaction.guild.id][ticket_id].get('creator')
+            # Store claimer info
+            self.ticket_system.active_tickets[interaction.guild.id][ticket_id]['claimed_by'] = interaction.user.id
+        
+        # If we found the creator, modify their permissions
+        if creator_id:
+            creator = interaction.guild.get_member(creator_id)
+            if creator:
+                await ticket_channel.set_permissions(creator, read_messages=True, send_messages=False)
+                await ticket_channel.send(f"{creator.mention}'s write access has been temporarily restricted while this ticket is being processed.")
+        
         await ticket_channel.send(f"{interaction.user.mention} has claimed this ticket.")
         
         # Disable claim button
@@ -1004,6 +1029,109 @@ class TicketCreateView(discord.ui.View):
                 ephemeral=True
             )
 
+
+    # New ticket claim command
+@bot.tree.command(name="ticket-claim", description="Claim the current ticket")
+async def ticket_claim(interaction: discord.Interaction):
+    """Claim the current ticket."""
+    # Verify this is a ticket channel
+    if not interaction.channel.name.startswith(("support-", "report-", "appeal-", "paid-ad-")):
+        await interaction.response.send_message(
+            "This command can only be used in a ticket channel.", 
+            ephemeral=True
+        )
+        return
+    
+    # Check if the user has the required role
+    moderator_role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if moderator_role not in interaction.user.roles:
+        await interaction.response.send_message(
+            "You do not have permission to claim this ticket.",
+            ephemeral=True
+        )
+        return
+    
+    # Check if ticket is already claimed
+    if "-claimed" in interaction.channel.name:
+        await interaction.response.send_message(
+            "This ticket is already claimed.", 
+            ephemeral=True
+        )
+        return
+    
+    # Claim the ticket
+    await interaction.channel.edit(name=f"{interaction.channel.name}-claimed")
+    
+    # Extract ticket ID from channel name
+    ticket_id = None
+    for part in interaction.channel.name.split('-'):
+        if len(part) == 6 and all(c in string.ascii_uppercase + string.digits for c in part):
+            ticket_id = part
+            break
+    
+    # Update the active tickets with claimer info if ticket ID was found
+    if ticket_id and interaction.guild.id in ticket_system.active_tickets and ticket_id in ticket_system.active_tickets[interaction.guild.id]:
+        ticket_system.active_tickets[interaction.guild.id][ticket_id]['claimed_by'] = interaction.user.id
+    
+    await interaction.response.send_message(f"{interaction.user.mention} has claimed this ticket.")
+
+
+# New ticket unclaim command
+@bot.tree.command(name="ticket-unclaim", description="Unclaim the current ticket")
+async def ticket_unclaim(interaction: discord.Interaction):
+    """Unclaim the current ticket."""
+    # Verify this is a ticket channel
+    if not interaction.channel.name.startswith(("support-", "report-", "appeal-", "paid-ad-")):
+        await interaction.response.send_message(
+            "This command can only be used in a ticket channel.", 
+            ephemeral=True
+        )
+        return
+    
+    # Check if the user has the required role
+    moderator_role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
+    if moderator_role not in interaction.user.roles:
+        await interaction.response.send_message(
+            "You do not have permission to unclaim this ticket.",
+            ephemeral=True
+        )
+        return
+    
+    # Check if ticket is claimed
+    if "-claimed" not in interaction.channel.name:
+        await interaction.response.send_message(
+            "This ticket is not claimed.", 
+            ephemeral=True
+        )
+        return
+    
+    # Extract ticket ID from channel name
+    ticket_id = None
+    for part in interaction.channel.name.split('-'):
+        if len(part) == 6 and all(c in string.ascii_uppercase + string.digits for c in part):
+            ticket_id = part
+            break
+    
+    # Check if the user is the one who claimed it
+    if ticket_id and interaction.guild.id in ticket_system.active_tickets and ticket_id in ticket_system.active_tickets[interaction.guild.id]:
+        claimed_by = ticket_system.active_tickets[interaction.guild.id][ticket_id].get('claimed_by')
+        if claimed_by and claimed_by != interaction.user.id and not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "You can only unclaim tickets that you have claimed.",
+                ephemeral=True
+            )
+            return
+        
+        # Remove claimer info
+        if 'claimed_by' in ticket_system.active_tickets[interaction.guild.id][ticket_id]:
+            del ticket_system.active_tickets[interaction.guild.id][ticket_id]['claimed_by']
+    
+    # Unclaim the ticket - remove the "claimed" suffix
+    new_name = interaction.channel.name.replace("-claimed", "")
+    await interaction.channel.edit(name=new_name)
+    
+    await interaction.response.send_message(f"{interaction.user.mention} has unclaimed this ticket.")
+    
 
 # Update the ticket-setup command to include the banner
 @bot.tree.command(name="ticket-setup", description="Send the ticket message.")
