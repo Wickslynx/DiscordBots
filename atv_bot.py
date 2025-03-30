@@ -13,6 +13,11 @@ APPLICATION_ID =  #Your application ID.
 TICKET_CHANNEL_ID = #(Where the logs will be sent)
 
 
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+intents.reactions = True  
+
 
 class Bot(commands.Bot):
     def __init__(self):
