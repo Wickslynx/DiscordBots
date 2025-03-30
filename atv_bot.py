@@ -1113,3 +1113,28 @@ async def ticket_close(interaction: discord.Interaction):
     # Optional: Send a follow-up message if the channel deletion fails
     await interaction.followup.send("Ticket has been forcibly closed.")
     await interaction.channel.delete()
+
+
+
+# Error handler.
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.errors.MissingPermissions):
+        await ctx.send("You don't have permission to use this command!")
+    elif isinstance(error, commands.errors.CommandNotFound):
+        await ctx.send("Command not found!")
+    else:
+        await ctx.send("An error occurred while processing your command.")
+
+# Global error handler-
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+    await interaction.response.send_message("An error occurred while processing your command.", ephemeral=True)
+
+token = ""
+
+def main():
+    bot.run(token)
+
+if __name__ == "__main__":
+    main()
