@@ -69,7 +69,7 @@ class TicketSystem:
                 count += 1
         return count
     
-    def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
+    async def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
         """Create a ticket channel with specified configuration."""
         # Check if user has reached the maximum number of tickets
         user_ticket_count = self.get_user_ticket_count(interaction.guild.id, interaction.user.id)
