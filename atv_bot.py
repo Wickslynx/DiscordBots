@@ -11,6 +11,9 @@ import string
 
 APPLICATION_ID =  #Your application ID.
 TICKET_CHANNEL_ID = #(Where the logs will be sent)
+TICKET_CATEGORY_ID = #The category in which the tickets will be created.
+OT_ID = #OT role (used to check setup)
+INTERNAL_AFFAIRS_ID = #IA role (used to see the tickets) 
 
 
 intents = discord.Intents.default()
