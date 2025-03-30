@@ -68,151 +68,148 @@ class TicketSystem:
             if ticket_data['creator'] == user_id:
                 count += 1
         return count
-
-    # Replace the standalone create_ticket_channel function with this updated method in the TicketSystem class
-# Add this method to the TicketSystem class, replacing the existing create_ticket_channel method
-
-def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
-    """Create a ticket channel with specified configuration."""
-    # Check if user has reached the maximum number of tickets
-    user_ticket_count = self.get_user_ticket_count(interaction.guild.id, interaction.user.id)
-    if user_ticket_count >= self.max_tickets_per_user:
-        await interaction.response.send_message(
-            f"You already have {user_ticket_count} active tickets. Please close some before creating new ones.", 
-            ephemeral=True
-        )
-        return None
-        
-    # Generate unique ticket ID
-    ticket_id = self.generate_ticket_id()
     
-    # Create channel name
-    channel_name = f"{ticket_type}-{interaction.user.name[:4]}-{ticket_id}"
-    
-    # Create ticket channel
-    try:
-        # Use the constant for the ticket category ID
-        category = interaction.guild.get_channel(TICKET_CATEGORY_ID)
-        if not category:
+    def create_ticket_channel(self, interaction: discord.Interaction, ticket_type: str):
+        """Create a ticket channel with specified configuration."""
+        # Check if user has reached the maximum number of tickets
+        user_ticket_count = self.get_user_ticket_count(interaction.guild.id, interaction.user.id)
+        if user_ticket_count >= self.max_tickets_per_user:
             await interaction.response.send_message(
-                "Ticket category not found. Please contact an administrator.", 
+                f"You already have {user_ticket_count} active tickets. Please close some before creating new ones.", 
                 ephemeral=True
             )
             return None
+            
+        # Generate unique ticket ID
+        ticket_id = self.generate_ticket_id()
         
-        ticket_channel = await interaction.guild.create_text_channel(
-            name=channel_name, 
-            category=category
-        )
+        # Create channel name
+        channel_name = f"{ticket_type}-{interaction.user.name[:4]}-{ticket_id}"
         
-        # Get required roles
-        ownership_team = interaction.guild.get_role(OT_ID)
-        internal_affairs = interaction.guild.get_role(INTERNAL_AFFAIRS_ID)
-        
-        # Verify roles exist
-        if not ownership_team or not internal_affairs:
-            await interaction.response.send_message(
-                "Required roles not found. Please contact an administrator.", 
-                ephemeral=True
-            )
-            await ticket_channel.delete()
-            return None
-        
-        # Set channel permissions
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            ownership_team: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            internal_affairs: discord.PermissionOverwrite(read_messages=True, send_messages=True)
-        }
-        await ticket_channel.edit(overwrites=overwrites)
-        
-        # Initialize guild config if not already done
-        if interaction.guild.id not in self.ticket_config:
-            self.ticket_config[interaction.guild.id] = {
-                'welcome_message': "Welcome to ticket support!",
-                'support_message': "Please describe your issue and someone will assist you shortly.",
-                'report_message': "Please provide details about what you're reporting and any evidence.",
-                'appeal_message': "Please explain why you believe this decision should be reconsidered.",
-                'paid_ad_message': "Please provide details about your partnership or advertisement request.",
-                'ticket_banner': None
-            }
-        
-        # Get guild configuration
-        guild_config = self.ticket_config[interaction.guild.id]
-        
-        # Get ticket banner if set
-        ticket_banner = guild_config.get('ticket_banner')
-        
-        # Get welcome message based on ticket type
-        if ticket_type == 'support':
-            welcome_message = guild_config.get('support_message', guild_config.get('welcome_message', "Welcome to Support ticket!"))
-        elif ticket_type == 'report':
-            welcome_message = guild_config.get('report_message', guild_config.get('welcome_message', "Welcome to Report ticket!"))
-        elif ticket_type == 'appeal':
-            welcome_message = guild_config.get('appeal_message', guild_config.get('welcome_message', "Welcome to Appeal ticket!"))
-        elif ticket_type == 'paid-ad':
-            welcome_message = guild_config.get('paid_ad_message', guild_config.get('welcome_message', "Welcome to Partnership/Ad ticket!"))
-        else:
-            welcome_message = guild_config.get('welcome_message', f"Welcome to {ticket_type.replace('-', ' ').title()} ticket support!")
-        
-        # Send banner if configured
-        if ticket_banner:
-            try:
-                banner_embed = discord.Embed()
-                banner_embed.set_image(url=ticket_banner)
-                await ticket_channel.send(embed=banner_embed)
-            except Exception as e:
-                print(f"Error sending banner: {e}")
-                # Continue even if banner fails
-        
-        # Create welcome embed
-        embed = discord.Embed(
-            title=f"{ticket_type.capitalize()} Ticket",
-            description=welcome_message,
-            color=discord.Color.blue()
-        )
-        embed.add_field(name="Ticket ID", value=ticket_id, inline=False)
-        embed.add_field(name="Created By", value=interaction.user.mention, inline=False)
-        
-        # Add ticket limit information
-        new_ticket_count = user_ticket_count + 1
-        embed.add_field(
-            name="Ticket Limit", 
-            value=f"You have {new_ticket_count}/{self.max_tickets_per_user} tickets open", 
-            inline=False
-        )
-        
-        # Send embed with ticket view
-        ticket_view = TicketView(self, ticket_id)
-        await ticket_channel.send(f"{interaction.user.mention}")
-        await ticket_channel.send(embed=embed, view=ticket_view)
-        
-        # Track active tickets
-        if interaction.guild.id not in self.active_tickets:
-            self.active_tickets[interaction.guild.id] = {}
-        self.active_tickets[interaction.guild.id][ticket_id] = {
-            'channel_id': ticket_channel.id,
-            'creator': interaction.user.id,
-            'type': ticket_type
-        }
-        
-        return ticket_channel
-    
-    except Exception as e:
-        print(f"Error creating ticket channel: {e}")
+        # Create ticket channel
         try:
-            await interaction.response.send_message(
-                f"Failed to create ticket: {str(e)}", 
-                ephemeral=True
+            # Use the constant for the ticket category ID
+            category = interaction.guild.get_channel(TICKET_CATEGORY_ID)
+            if not category:
+                await interaction.response.send_message(
+                    "Ticket category not found. Please contact an administrator.", 
+                    ephemeral=True
+                )
+                return None
+            
+            ticket_channel = await interaction.guild.create_text_channel(
+                name=channel_name, 
+                category=category
             )
-        except:
-            # If response already sent, use followup
-            await interaction.followup.send(
-                f"Failed to create ticket: {str(e)}", 
-                ephemeral=True
+            
+            # Get required roles
+            ownership_team = interaction.guild.get_role(OT_ID)
+            internal_affairs = interaction.guild.get_role(INTERNAL_AFFAIRS_ID)
+            
+            # Verify roles exist
+            if not ownership_team or not internal_affairs:
+                await interaction.response.send_message(
+                    "Required roles not found. Please contact an administrator.", 
+                    ephemeral=True
+                )
+                await ticket_channel.delete()
+                return None
+            
+            # Set channel permissions
+            overwrites = {
+                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                ownership_team: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                internal_affairs: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            }
+            await ticket_channel.edit(overwrites=overwrites)
+            
+            # Initialize guild config if not already done
+            if interaction.guild.id not in self.ticket_config:
+                self.ticket_config[interaction.guild.id] = {
+                    'welcome_message': "Welcome to ticket support!",
+                    'support_message': "Please describe your issue and someone will assist you shortly.",
+                    'report_message': "Please provide details about what you're reporting and any evidence.",
+                    'appeal_message': "Please explain why you believe this decision should be reconsidered.",
+                    'paid_ad_message': "Please provide details about your partnership or advertisement request.",
+                    'ticket_banner': None
+                }
+            
+            # Get guild configuration
+            guild_config = self.ticket_config[interaction.guild.id]
+            
+            # Get ticket banner if set
+            ticket_banner = guild_config.get('ticket_banner')
+            
+            # Get welcome message based on ticket type
+            if ticket_type == 'support':
+                welcome_message = guild_config.get('support_message', guild_config.get('welcome_message', "Welcome to Support ticket!"))
+            elif ticket_type == 'report':
+                welcome_message = guild_config.get('report_message', guild_config.get('welcome_message', "Welcome to Report ticket!"))
+            elif ticket_type == 'appeal':
+                welcome_message = guild_config.get('appeal_message', guild_config.get('welcome_message', "Welcome to Appeal ticket!"))
+            elif ticket_type == 'paid-ad':
+                welcome_message = guild_config.get('paid_ad_message', guild_config.get('welcome_message', "Welcome to Partnership/Ad ticket!"))
+            else:
+                welcome_message = guild_config.get('welcome_message', f"Welcome to {ticket_type.replace('-', ' ').title()} ticket support!")
+            
+            # Send banner if configured
+            if ticket_banner:
+                try:
+                    banner_embed = discord.Embed()
+                    banner_embed.set_image(url=ticket_banner)
+                    await ticket_channel.send(embed=banner_embed)
+                except Exception as e:
+                    print(f"Error sending banner: {e}")
+                    # Continue even if banner fails
+            
+            # Create welcome embed
+            embed = discord.Embed(
+                title=f"{ticket_type.capitalize()} Ticket",
+                description=welcome_message,
+                color=discord.Color.blue()
             )
-        return None
+            embed.add_field(name="Ticket ID", value=ticket_id, inline=False)
+            embed.add_field(name="Created By", value=interaction.user.mention, inline=False)
+            
+            # Add ticket limit information
+            new_ticket_count = user_ticket_count + 1
+            embed.add_field(
+                name="Ticket Limit", 
+                value=f"You have {new_ticket_count}/{self.max_tickets_per_user} tickets open", 
+                inline=False
+            )
+            
+            # Send embed with ticket view
+            ticket_view = TicketView(self, ticket_id)
+            await ticket_channel.send(f"{interaction.user.mention}")
+            await ticket_channel.send(embed=embed, view=ticket_view)
+            
+            # Track active tickets
+            if interaction.guild.id not in self.active_tickets:
+                self.active_tickets[interaction.guild.id] = {}
+            self.active_tickets[interaction.guild.id][ticket_id] = {
+                'channel_id': ticket_channel.id,
+                'creator': interaction.user.id,
+                'type': ticket_type
+            }
+            
+            return ticket_channel
+        
+        except Exception as e:
+            print(f"Error creating ticket channel: {e}")
+            try:
+                await interaction.response.send_message(
+                    f"Failed to create ticket: {str(e)}", 
+                    ephemeral=True
+                )
+            except:
+                # If response already sent, use followup
+                await interaction.followup.send(
+                    f"Failed to create ticket: {str(e)}", 
+                    ephemeral=True
+                )
+            return None
 
 
 
