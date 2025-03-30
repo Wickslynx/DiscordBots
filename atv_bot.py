@@ -89,7 +89,7 @@ class TicketSystem:
         # Create ticket channel
         try:
             # Use a constant for the ticket category ID
-            category = interaction.guild.get_channel(1307742965657112627)
+            category = interaction.guild.get_channel(TICKET_CATEGORY_ID)
             if not category:
                 await interaction.response.send_message(
                     "Ticket category not found. Please contact an administrator.", 
