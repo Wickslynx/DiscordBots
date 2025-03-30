@@ -1,3 +1,12 @@
+import discord
+from discord.ext import commands
+from datetime import datetime, time
+import os
+import asyncio
+from discord.ext import tasks
+from pathlib import Path
+import random
+import string
 # FILL THESE IN WITH THE RIGHT ONES:
 
 APPLICATION_ID =  #Your application ID.
