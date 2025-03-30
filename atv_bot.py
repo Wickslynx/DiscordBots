@@ -1,5 +1,32 @@
+# FILL THESE IN WITH THE RIGHT ONES:
 
-# Global variables to store ticket configuration
+APPLICATION_ID =  #Your application ID.
+TICKET_CHANNEL_ID = #(Where the logs will be sent)
+
+
+
+class Bot(commands.Bot):
+    def __init__(self):
+        
+        super().__init__(
+            command_prefix='!',
+            intents=intents,
+            application_id=APPLICATION_ID
+        )
+
+    async def setup_hook(self):
+        self.add_view(TicketView(ticket_system, None))
+        self.add_view(TicketCreateView(ticket_system))
+            
+        await self.tree.sync()
+        print("Commands synced globally")
+
+
+
+bot = Bot()
+
+
+
 TICKET_CONFIG = {}
 ACTIVE_TICKETS = {}
 
