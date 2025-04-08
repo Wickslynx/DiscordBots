@@ -3,16 +3,20 @@ from discord import app_commands
 import asyncio
 from discord.ext import commands
 import os
+import datetime
 
 
 TOKEN = ""
 OT_ROLE_ID = 1297503537101541457
 MODERATOR_ROLE_ID = 1352988633489211442
 INTERNAL_AFFAIRS_ID = 1352988633489211442
+WICKS = 
+
 
 MODERATION_LOG_CHANNEL_ID = 
 INFRACTIONS_CHANNEL_ID = 1337816005581476063
 PROMOTIONS_CHANNEL_ID = 1330593721720377384
+WARNINGS_FILE = "storage/warnings.json"
 
 # Define intents
 intents = discord.Intents.default()
@@ -30,7 +34,39 @@ async def on_ready():
         print(f"Synced {len(synced)} command(s)")
     except Exception as e:
         print(f"Failed to sync commands: {e}")
+
+
+
+# --- HELPERS -----
+
+async def get_channel_by_id(guild, channel_id):
+    return guild.get_channel(channel_id)
+
+
+def load_warnings():
+    """Load warnings from JSON file."""
+    try:
+        if os.path.exists(WARNINGS_FILE):
+            with open(WARNINGS_FILE, 'r') as f:
+                content = f.read().strip()
+                if content:  # Check if file is not empty
+                    return json.loads(content)
+        # Return empty dict if file doesn't exist or is empty
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Error loading warnings file: {e}")
+        # If file is corrupted, return empty dict and backup the bad file
+        if os.path.exists(WARNINGS_FILE):
+            os.rename(WARNINGS_FILE, f"{WARNINGS_FILE}.bak")
+        return {}
+
+def save_warnings(warnings):
+    """Save warnings to JSON file."""
+    with open(WARNINGS_FILE, 'w') as f:
+        json.dump(warnings, f, indent=4)
         
+
+# --- REAL COMMANDS --
 @bot.tree.command(name="delete", description="Delete messages containing a specific word in this channel")
 @app_commands.describe(word="The word to filter and delete")
 async def delete_word(interaction: discord.Interaction, word: str):
@@ -43,7 +79,7 @@ async def delete_word(interaction: discord.Interaction, word: str):
     channel = interaction.channel  # Get the current channel
 
     ot_role = discord.utils.get(interaction.guild.roles, id=OT_ROLE_ID)
-    if ot_role not in interaction.user.roles:
+    if ot_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
         return
 
@@ -73,8 +109,8 @@ async def delete_word(interaction: discord.Interaction, word: str):
 
 @bot.tree.command(name="say", description="Make the bot say a message.")
 async def say(interaction: discord.Interaction, message: str):
-    role = discord.utils.get(interaction.guild.roles, id=OT_ID)
-    if role in interaction.user.roles:
+    role = discord.utils.get(interaction.guild.roles, id=OT_ROLE_ID)
+    if role in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("Message sent!", ephemeral=True)
         await interaction.channel.send(message)
     else:
@@ -88,7 +124,7 @@ bot.tree.command(name="ban", description="Ban a member from the server")
 async def ban(interaction: discord.Interaction, member: discord.Member, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to ban members.", ephemeral=True)
         return
 
@@ -132,7 +168,7 @@ async def ban(interaction: discord.Interaction, member: discord.Member, *, reaso
 async def unban(interaction: discord.Interaction, user_id: str, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to unban members.", ephemeral=True)
         return
 
@@ -169,7 +205,7 @@ async def unban(interaction: discord.Interaction, user_id: str, *, reason: str =
 async def mute(interaction: discord.Interaction, member: discord.Member, duration: int = None, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to mute members.", ephemeral=True)
         return
 
@@ -220,7 +256,7 @@ async def mute(interaction: discord.Interaction, member: discord.Member, duratio
 async def unmute(interaction: discord.Interaction, member: discord.Member, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to unmute members.", ephemeral=True)
         return
 
@@ -259,7 +295,7 @@ async def unmute(interaction: discord.Interaction, member: discord.Member, *, re
 async def warn(interaction: discord.Interaction, member: discord.Member, *, reason: str):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to warn members.", ephemeral=True)
         return
 
@@ -302,11 +338,11 @@ async def warn(interaction: discord.Interaction, member: discord.Member, *, reas
 
 # -----------------------------------
 
-@bot.tree.command(name="notes", description="View warnings for a member")
+@bot.tree.command(name="warnings", description="View warnings for a member")
 async def notes(interaction: discord.Interaction, member: discord.Member = None):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to view warnings.", ephemeral=True)
         return
 
@@ -347,7 +383,7 @@ async def notes(interaction: discord.Interaction, member: discord.Member = None)
 async def purge(interaction: discord.Interaction, amount: int):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to purge messages.", ephemeral=True)
         return
 
@@ -382,7 +418,7 @@ async def purge(interaction: discord.Interaction, amount: int):
 async def lock(interaction: discord.Interaction, channel: discord.TextChannel = None):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to lock channels.", ephemeral=True)
         return
 
@@ -420,7 +456,7 @@ async def lock(interaction: discord.Interaction, channel: discord.TextChannel = 
 async def unlock(interaction: discord.Interaction, channel: discord.TextChannel = None):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to unlock channels.", ephemeral=True)
         return
 
@@ -456,7 +492,7 @@ async def unlock(interaction: discord.Interaction, channel: discord.TextChannel 
 async def slowmode(interaction: discord.Interaction, seconds: int, channel: discord.TextChannel = None):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to set slowmode.", ephemeral=True)
         return
 
@@ -492,7 +528,7 @@ async def slowmode(interaction: discord.Interaction, seconds: int, channel: disc
 async def role_add(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to add roles.", ephemeral=True)
         return
 
@@ -520,7 +556,7 @@ async def role_add(interaction: discord.Interaction, member: discord.Member, rol
 async def role_remove(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to remove roles.", ephemeral=True)
         return
 
@@ -549,7 +585,7 @@ async def role_remove(interaction: discord.Interaction, member: discord.Member, 
 async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str, notes: str):
 
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
-    if role not in interaction.user.roles:
+    if role not in interaction.user.roles and interaction.user.id != WICKS:
         role = discord.utils.get(interaction.guild.roles, id=OT_ROLE_ID)
         if role not in interaction.user.roles:
             await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
@@ -574,7 +610,7 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
 async def promote(interaction: discord.Interaction, user: discord.Member, new_rank: discord.Role, reason: str):
 
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
-    if role not in interaction.user.roles:
+    if role not in interaction.user.roles and interaction.user.id != WICKS:
         role = discord.utils.get(interaction.guild.roles, id=OT_ROLE_ID)
         if role not in interaction.user.roles:
             await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
