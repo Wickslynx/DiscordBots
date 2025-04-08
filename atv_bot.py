@@ -544,7 +544,7 @@ async def role_remove(interaction: discord.Interaction, member: discord.Member, 
         await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
 
-@bot.tree.command(name="infract", description="Infract a user.")
+@bot.tree.command(name="infract", description="Infract a user. (RESERVE)")
 async def infract(interaction: discord.Interaction, user: discord.Member, punishment: str, reason: str, notes: str):
 
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
@@ -559,7 +559,7 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Infraction",
-            description=f'The high ranking team has decided to infract you! \n\n **User getting infracted**:\n {user.mention} \n\n **Punishment**:\n {punishment} \n\n **Reason**:\n {reason} \n\n **Notes**: {notes} ',
+            description=f'The Internal Affairs team has decided to infract you. Please do not create any drama by this infraction. Please open a appeal ticket if you have any problems. \n\n**User getting infracted**:\n {user.mention} \n\n **Punishment**:\n {punishment} \n\n **Reason**:\n {reason} \n\n **Notes**: {notes} ',
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
@@ -569,7 +569,7 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-@bot.tree.command(name="promote", description="Promote a user.")
+@bot.tree.command(name="promote", description="Promote a user. (RESERVE)")
 async def promote(interaction: discord.Interaction, user: discord.Member, new_rank: discord.Role, reason: str):
 
     role = discord.utils.get(interaction.guild.roles, id=INTERNAL_AFFAIRS_ID)
@@ -584,7 +584,8 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
             title="Staff Promotion!",
-            description=f'The High ranking team has decided to grant you a promotion! \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n {new_rank.mention} \n\n **Reason**:\n {reason}',
+            description=f' The Internal Affairs team has decided to promote you.  \n\n **User getting promoted**:\n {user.mention} \n\n **New Rank**:\n {new_rank.mention} \n\n **Reason**:\n {reason}',
+       
             color=discord.Color.green(),
             timestamp=datetime.utcnow()
         )
