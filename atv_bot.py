@@ -30,8 +30,8 @@ async def on_ready():
         print(f"Synced {len(synced)} command(s)")
     except Exception as e:
         print(f"Failed to sync commands: {e}")
-
-@@bot.tree.command(name="delete", description="Delete messages containing a specific word in this channel")
+        
+@bot.tree.command(name="delete", description="Delete messages containing a specific word in this channel")
 @app_commands.describe(word="The word to filter and delete")
 async def delete_word(interaction: discord.Interaction, word: str):
     # Defer the response as this operation might take some time
@@ -70,7 +70,8 @@ async def delete_word(interaction: discord.Interaction, word: str):
     await interaction.followup.send(f"Finished filtering in this channel! Deleted {deleted_count} messages containing '{word}'. Failed to delete {error_count} messages.", ephemeral=True)
 
 
-bot.tree.command(name="say", description="Make the bot say a message.")
+
+@bot.tree.command(name="say", description="Make the bot say a message.")
 async def say(interaction: discord.Interaction, message: str):
     role = discord.utils.get(interaction.guild.roles, id=OT_ID)
     if role in interaction.user.roles:
