@@ -644,7 +644,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
-
 @bot.tree.command(name="shift-promo", description="Automatically promotes users with over 3.5 hours of shift time")
 async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Check if user has permission to run this command
@@ -656,36 +655,25 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Defer response as this might take some time
     await interaction.response.defer(ephemeral=True)
 
-    # Process the leaderboard data
-    lines = leaderboard.strip().split('\n')
+    # Process the leaderboard data in the new format
+    # Split by " **-** " which separates each user from their time and others
+    entries = leaderboard.strip().split(" **-** ")
     promotions = []
     errors = []
     
-    # We'll process the data in pairs (name line followed by time line)
     i = 0
-    while i < len(lines):
+    while i < len(entries) - 1:  # Process in pairs (user and time)
         try:
-            # Skip empty lines
-            if not lines[i].strip():
-                i += 1
-                continue
-                
-            # Check if we have enough lines left to process a pair
-            if i + 1 >= len(lines):
-                errors.append(f"Incomplete data: {lines[i][:30]}...")
-                break
-                
-            # Extract username line (may contain status indicators)
-            user_line = lines[i].strip()
-            # Extract time line
-            time_line = lines[i+1].strip()
+            # Get the user part and the time part
+            user_part = entries[i].strip()
+            time_part = entries[i+1].strip()
             
-            # Clean up username (remove status indicators)
-            user_part = user_line
-            if ':passed:' in user_part or ':failed:' in user_part:
-                parts = user_part.split(' ', 1)
-                if len(parts) > 1:
-                    user_part = parts[1].strip()
+            # If the time part contains a user name, it means we've moved to the next user
+            # So we need to separate the actual time from the next user
+            if '**-**' in time_part:
+                # This is rare but might happen if the split wasn't clean
+                time_parts = time_part.split('**-**', 1)
+                time_part = time_parts[0].strip()
             
             # Find the member
             member = None
@@ -717,23 +705,28 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                 i += 2  # Move to the next pair
                 continue
             
-            # Extract hours and minutes
+            # Extract hours and minutes from the time part
             hours = 0
             minutes = 0
+            seconds = 0
             
-            hours_match = re.search(r'(\d+)\s*(?:hour|hours|h)', time_line.lower())
+            hours_match = re.search(r'(\d+)\s*hour', time_part.lower())
             if hours_match:
                 hours = int(hours_match.group(1))
             
-            minutes_match = re.search(r'(\d+)\s*(?:minute|minutes|min|m)', time_line.lower())
+            minutes_match = re.search(r'(\d+)\s*minute', time_part.lower())
             if minutes_match:
                 minutes = int(minutes_match.group(1))
+                
+            seconds_match = re.search(r'(\d+)\s*second', time_part.lower())
+            if seconds_match:
+                seconds = int(seconds_match.group(1))
             
             # Calculate total hours
-            total_hours = hours + (minutes / 60)
+            total_hours = hours + (minutes / 60) + (seconds / 3600)
             
-            # Only process entries with passed status and sufficient hours
-            if ':passed:' in user_line and total_hours >= 3.5:
+            # Process entries with sufficient hours (no need to check for :passed: anymore)
+            if total_hours >= 3.5:
                 # Get the member's highest role
                 member_roles = [role for role in member.roles if role.name != "@everyone"]
                 if not member_roles:
@@ -766,9 +759,9 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                 promotions.append(f"{member.display_name}: {highest_role.name} → {next_role.name} ({total_hours:.1f} hours)")
             
         except Exception as e:
-            errors.append(f"Error processing entry: {lines[i][:30]}... - {str(e)}")
+            errors.append(f"Error processing entry: {user_part[:30]}... - {str(e)}")
         
-        i += 2  # Move to the next pair of lines
+        i += 2  # Move to the next user entry
     
     # Create response message
     response = "Automatic promotion process completed!\n\n"
@@ -799,6 +792,7 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
         # Send each chunk
         for chunk in error_chunks[1:]:  # Skip the first element which is just the header
             await interaction.followup.send(chunk[:1900], ephemeral=True)
+            
 
 # Run the bot
 def main():
