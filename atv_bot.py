@@ -749,16 +749,21 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                         next_role = role
                         break
 
-                if not next_role:
+                if member and next_role:
+                    try:
+                        # Invoke the promote command
+                        await bot.tree.invoke(
+                            interaction,  # Pass the original interaction context
+                            'promote',    # The name of the command
+                            user=member,
+                            new_rank=next_role,
+                            reason=f"Automatic promotion for {total_hours:.1f} hours of shift time"
+                        )
+                        promotions.append(f"{member.display_name}: {highest_role.name} → {next_role.name} ({total_hours:.1f} hours)")
+                    except Exception as e:
+                        errors.append(f"Error calling promote command for {member.display_name}: {e}")
+                elif not next_role:
                     errors.append(f"No higher role found for {member.display_name}")
-                    i += 2
-                    continue
-
-                # Execute the promotion using your existing /promote command
-                command_channel = interaction.channel
-                await command_channel.send(f"/promote {member.mention} {next_role.mention} Automatic promotion for {total_hours:.1f} hours of shift time")
-
-                promotions.append(f"{member.display_name}: {highest_role.name} → {next_role.name} ({total_hours:.1f} hours)")
 
         except Exception as e:
             errors.append(f"Error processing entry: {entries[i][:30]}... - {str(e)}")
@@ -794,8 +799,6 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
         # Send each chunk
         for chunk in error_chunks[1:]:  # Skip the first element which is just the header
             await interaction.followup.send(chunk[:1900], ephemeral=True)
-
-
 # Run the bot
 def main():
     if not TOKEN:
