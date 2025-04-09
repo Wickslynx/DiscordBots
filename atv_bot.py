@@ -655,30 +655,31 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Defer response as this might take some time
     await interaction.response.defer(ephemeral=True)
 
-    # Process the leaderboard data in the new format
-    # Split by " **-** " which separates each user from their time and others
-    entries = leaderboard.strip().split(" **-** ")
+    # Process the leaderboard data
+    entries = leaderboard.strip().split(" - ")
+    print(f"Entries after splitting: {entries}") # For debugging
     promotions = []
     errors = []
-    
+
     i = 0
     while i < len(entries) - 1:  # Process in pairs (user and time)
         try:
             # Get the user part and the time part
             user_part = entries[i].strip()
             time_part = entries[i+1].strip()
-            
+            print(f"User Part: {user_part}") # For debugging
+            print(f"Time Part: {time_part}") # For debugging
+
             # If the time part contains a user name, it means we've moved to the next user
             # So we need to separate the actual time from the next user
-            if '**-**' in time_part:
-                # This is rare but might happen if the split wasn't clean
-                time_parts = time_part.split('**-**', 1)
+            if ' - ' in time_part:
+                time_parts = time_part.split(' - ', 1)
                 time_part = time_parts[0].strip()
-            
+
             # Find the member
             member = None
             mention_match = re.search(r'<@(\d+)>', user_part)
-            
+
             if mention_match:
                 # Direct mention
                 user_id = int(mention_match.group(1))
@@ -686,12 +687,12 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                     member = await interaction.guild.fetch_member(user_id)
                 except discord.NotFound:
                     pass
-            
+
             # If not found by mention, try by name
             if not member:
                 # Clean up the username (remove decorations)
                 clean_name = re.sub(r'@|\[.*?\]|\{.*?\}|\(.*?\)', '', user_part).strip()
-                
+
                 # Try to find by display name
                 for m in interaction.guild.members:
                     if (clean_name.lower() in m.name.lower() or
@@ -699,33 +700,33 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                             (m.nick and clean_name.lower() in m.nick.lower())):
                         member = m
                         break
-            
+
             if not member:
                 errors.append(f"Could not find member: {user_part}")
                 i += 2  # Move to the next pair
                 continue
-            
+
             # Extract hours and minutes from the time part
             hours = 0
             minutes = 0
             seconds = 0
-            
+
             hours_match = re.search(r'(\d+)\s*hour', time_part.lower())
             if hours_match:
                 hours = int(hours_match.group(1))
-            
+
             minutes_match = re.search(r'(\d+)\s*minute', time_part.lower())
             if minutes_match:
                 minutes = int(minutes_match.group(1))
-                
+
             seconds_match = re.search(r'(\d+)\s*second', time_part.lower())
             if seconds_match:
                 seconds = int(seconds_match.group(1))
-            
+
             # Calculate total hours
             total_hours = hours + (minutes / 60) + (seconds / 3600)
-            
-            # Process entries with sufficient hours (no need to check for :passed: anymore)
+
+            # Process entries with sufficient hours
             if total_hours >= 3.5:
                 # Get the member's highest role
                 member_roles = [role for role in member.roles if role.name != "@everyone"]
@@ -733,62 +734,62 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                     errors.append(f"{member.display_name} has no roles")
                     i += 2
                     continue
-                
+
                 highest_role = max(member_roles, key=lambda r: r.position)
-                
+
                 # Find the next higher role
                 guild_roles = sorted(interaction.guild.roles, key=lambda r: r.position)
                 next_role = None
-                
+
                 for role in guild_roles:
                     if role.position > highest_role.position:
                         if role.id in [1302858922725736511, 1302303847737196594, 1291653950348595232, 1302303324279668916, 1291653369748000809, 1302303590945263616, 1291653558906650665, 1297501782607401011, 1291653487008157747, 1306270186264985620, 1291661520593223680, 1352344098832650250, 1351319004966424606, 1291657293443895376, 1291746295576526848, 1291746295576526848, 1284791394199666724, 1291746295576526848, 1291657211935985676, 1302859217643900958]:
                             continue
                         next_role = role
                         break
-                
+
                 if not next_role:
                     errors.append(f"No higher role found for {member.display_name}")
                     i += 2
                     continue
-                
+
                 # Execute the promotion using your existing /promote command
                 command_channel = interaction.channel
                 await command_channel.send(f"/promote {member.mention} {next_role.mention} Automatic promotion for {total_hours:.1f} hours of shift time")
-                
+
                 promotions.append(f"{member.display_name}: {highest_role.name} → {next_role.name} ({total_hours:.1f} hours)")
-            
+
         except Exception as e:
             errors.append(f"Error processing entry: {user_part[:30]}... - {str(e)}")
-        
+
         i += 2  # Move to the next user entry
-    
+
     # Create response message
     response = "Automatic promotion process completed!\n\n"
-    
+
     if promotions:
         response += "**Promotions:**\n"
         response += "\n".join(f"• {promotion}" for promotion in promotions)
     else:
         response += "No users were eligible for promotion."
-    
+
     # Send the response in chunks to avoid hitting Discord's message limit
     await interaction.followup.send(response[:1900], ephemeral=True)
-    
+
     # Send errors in separate chunks if needed
     if errors:
         error_chunks = ["**Errors:**"]
         current_chunk = "**Errors:**"
-        
+
         for error in errors:
             if len(current_chunk) + len(error) + 4 > 1900:  # Allow room for bullet point and newline
                 error_chunks.append(current_chunk)
                 current_chunk = "**Errors (continued):**"
-            
+
             current_chunk += f"\n• {error}"
-        
+
         error_chunks.append(current_chunk)
-        
+
         # Send each chunk
         for chunk in error_chunks[1:]:  # Skip the first element which is just the header
             await interaction.followup.send(chunk[:1900], ephemeral=True)
