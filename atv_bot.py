@@ -666,61 +666,61 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     promotions = []
     errors = []
 
-    for entry in entries:
+    i = 0
+    while i < len(entries) - 1:  # Process in pairs (time and then user)
         try:
-            raw_entry = entry.strip()
-            print(f"Raw Entry: {raw_entry}") # Debugging the whole entry
+            # Get the time part (from the odd index)
+            time_part_raw = entries[i].strip()
+            print(f"Raw Time Part: {time_part_raw}") # For debugging
+
+            # Get the user part (from the even index)
+            user_part_raw = entries[i + 1].strip()
+            print(f"Raw User Part: {user_part_raw}") # For debugging
+
+            # Remove :passed: or :failed: from the user part
+            user_part = re.sub(r'^:passed:|:failed:', '', user_part_raw).strip()
+            print(f"Cleaned User Part: {user_part}") # For debugging
 
             member = None
-            user_part = ""
-            time_part = ""
+            mention_match = re.search(r'(<@\d+>)', user_part)
 
-            # Try to find a user mention first
-            mention_match = re.search(r'(<@\d+>)', raw_entry)
             if mention_match:
-                user_part = mention_match.group(1).strip()
-                time_part = raw_entry.split(user_part, 1)[-1].strip()
                 user_id = int(mention_match.group(1)[2:-1])
                 try:
                     member = await interaction.guild.fetch_member(user_id)
                 except discord.NotFound:
                     pass
 
-            # If no mention, try to find a username
             if not member:
-                username_match = re.search(r'(@[\w\s|\[\]\{\}\(\)\._-]+)', raw_entry)
+                username_match = re.search(r'(@[\w\s|\[\]\{\}\(\)\._-]+)', user_part)
                 if username_match:
-                    user_part_raw = username_match.group(1).strip()
-                    user_part = re.sub(r'@|\[.*?\]|\{.*?\}|\(.*?\)', '', user_part_raw).strip()
-                    time_part = raw_entry.split(user_part_raw, 1)[-1].strip()
+                    user_part_cleaned = re.sub(r'@|\[.*?\]|\{.*?\}|\(.*?\)', '', username_match.group(1)).strip()
                     for m in interaction.guild.members:
-                        if (user_part.lower() in m.name.lower() or
-                                user_part.lower() in m.display_name.lower() or
-                                (m.nick and user_part.lower() in m.nick.lower())):
+                        if (user_part_cleaned.lower() in m.name.lower() or
+                                user_part_cleaned.lower() in m.display_name.lower() or
+                                (m.nick and user_part_cleaned.lower() in m.nick.lower())):
                             member = m
                             break
 
             if not member:
-                errors.append(f"Could not find member in entry: {raw_entry}")
+                errors.append(f"Could not find member: {user_part}")
+                i += 2 # Move to the next pair
                 continue
-
-            print(f"Found User Part: {user_part}") # For debugging
-            print(f"Raw Time Part: {time_part}") # For debugging
 
             # Extract hours and minutes from the time part
             hours = 0
             minutes = 0
             seconds = 0
 
-            hours_match = re.search(r'(\d+)\s*hour', time_part.lower())
+            hours_match = re.search(r'(\d+)\s*hour', time_part_raw.lower())
             if hours_match:
                 hours = int(hours_match.group(1))
 
-            minutes_match = re.search(r'(\d+)\s*minute', time_part.lower())
+            minutes_match = re.search(r'(\d+)\s*minute', time_part_raw.lower())
             if minutes_match:
                 minutes = int(minutes_match.group(1))
 
-            seconds_match = re.search(r'(\d+)\s*second', time_part.lower())
+            seconds_match = re.search(r'(\d+)\s*second', time_part_raw.lower())
             if seconds_match:
                 seconds = int(seconds_match.group(1))
 
@@ -733,6 +733,7 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                 member_roles = [role for role in member.roles if role.name != "@everyone"]
                 if not member_roles:
                     errors.append(f"{member.display_name} has no roles")
+                    i += 2
                     continue
 
                 highest_role = max(member_roles, key=lambda r: r.position)
@@ -750,6 +751,7 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
 
                 if not next_role:
                     errors.append(f"No higher role found for {member.display_name}")
+                    i += 2
                     continue
 
                 # Execute the promotion using your existing /promote command
@@ -759,7 +761,9 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                 promotions.append(f"{member.display_name}: {highest_role.name} → {next_role.name} ({total_hours:.1f} hours)")
 
         except Exception as e:
-            errors.append(f"Error processing entry: {entry[:30]}... - {str(e)}")
+            errors.append(f"Error processing entry: {entries[i][:30]}... - {str(e)}")
+
+        i += 2  # Move to the next pair (time and then user)
 
     # Create response message
     response = "Automatic promotion process completed!\n\n"
