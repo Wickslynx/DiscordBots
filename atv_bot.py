@@ -110,7 +110,7 @@ async def delete_word(interaction: discord.Interaction, word: str):
 
 
 @bot.tree.command(name="say", description="Make the bot say a message.")
-async def say(interaction: discord.Interaction, message: str):
+async def say(interaction: discord.Interaction, essage: str):
     role = discord.utils.get(interaction.guild.roles, id=OT_ROLE_ID)
     if role in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("Message sent!", ephemeral=True)
@@ -801,7 +801,7 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
         # Send each chunk
         for chunk in error_chunks[1:]:  # Skip the first element which is just the header
             await interaction.followup.send(chunk[:1900], ephemeral=True)
-            
+
 
 # Run the bot
 def main():
