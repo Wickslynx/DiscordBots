@@ -646,7 +646,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 
 
 
-
 @bot.tree.command(name="shift-promo", description="Automatically promotes users with over 3.5 hours of shift time")
 async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Check if user has permission to run this command
@@ -669,59 +668,59 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
 
     for entry in entries:
         try:
-            user_part_raw = entry.split(" - ")[0].strip() # Try to get the user part from the start
-            time_part_raw = entry.split(" - ")[-1].strip() # Try to get the time part from the end
-            print(f"Raw Entry: {entry}") # Debugging the whole entry
-            print(f"Raw User Part: {user_part_raw}") # For debugging
-            print(f"Raw Time Part: {time_part_raw}") # For debugging
+            raw_entry = entry.strip()
+            print(f"Raw Entry: {raw_entry}") # Debugging the whole entry
 
-            # Remove :passed: or :failed: from the user part
-            user_part = re.sub(r'^:passed:|:failed:', '', user_part_raw).strip()
-            print(f"Cleaned User Part: {user_part}") # For debugging
-
-            # Find the member
             member = None
-            mention_match = re.search(r'<@(\d+)>', user_part)
+            user_part = ""
+            time_part = ""
 
+            # Try to find a user mention first
+            mention_match = re.search(r'(<@\d+>)', raw_entry)
             if mention_match:
-                # Direct mention
-                user_id = int(mention_match.group(1))
+                user_part = mention_match.group(1).strip()
+                time_part = raw_entry.split(user_part, 1)[-1].strip()
+                user_id = int(mention_match.group(1)[2:-1])
                 try:
                     member = await interaction.guild.fetch_member(user_id)
                 except discord.NotFound:
                     pass
 
-            # If not found by mention, try by name
+            # If no mention, try to find a username
             if not member:
-                # Clean up the username (remove decorations)
-                clean_name = re.sub(r'@|\[.*?\]|\{.*?\}|\(.*?\)', '', user_part).strip()
-
-                # Try to find by display name
-                for m in interaction.guild.members:
-                    if (clean_name.lower() in m.name.lower() or
-                            clean_name.lower() in m.display_name.lower() or
-                            (m.nick and clean_name.lower() in m.nick.lower())):
-                        member = m
-                        break
+                username_match = re.search(r'(@[\w\s|\[\]\{\}\(\)\._-]+)', raw_entry)
+                if username_match:
+                    user_part_raw = username_match.group(1).strip()
+                    user_part = re.sub(r'@|\[.*?\]|\{.*?\}|\(.*?\)', '', user_part_raw).strip()
+                    time_part = raw_entry.split(user_part_raw, 1)[-1].strip()
+                    for m in interaction.guild.members:
+                        if (user_part.lower() in m.name.lower() or
+                                user_part.lower() in m.display_name.lower() or
+                                (m.nick and user_part.lower() in m.nick.lower())):
+                            member = m
+                            break
 
             if not member:
-                errors.append(f"Could not find member: {user_part}")
+                errors.append(f"Could not find member in entry: {raw_entry}")
                 continue
+
+            print(f"Found User Part: {user_part}") # For debugging
+            print(f"Raw Time Part: {time_part}") # For debugging
 
             # Extract hours and minutes from the time part
             hours = 0
             minutes = 0
             seconds = 0
 
-            hours_match = re.search(r'(\d+)\s*hour', time_part_raw.lower())
+            hours_match = re.search(r'(\d+)\s*hour', time_part.lower())
             if hours_match:
                 hours = int(hours_match.group(1))
 
-            minutes_match = re.search(r'(\d+)\s*minute', time_part_raw.lower())
+            minutes_match = re.search(r'(\d+)\s*minute', time_part.lower())
             if minutes_match:
                 minutes = int(minutes_match.group(1))
 
-            seconds_match = re.search(r'(\d+)\s*second', time_part_raw.lower())
+            seconds_match = re.search(r'(\d+)\s*second', time_part.lower())
             if seconds_match:
                 seconds = int(seconds_match.group(1))
 
@@ -791,7 +790,6 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
         # Send each chunk
         for chunk in error_chunks[1:]:  # Skip the first element which is just the header
             await interaction.followup.send(chunk[:1900], ephemeral=True)
-            
 
 
 # Run the bot
