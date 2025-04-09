@@ -120,7 +120,7 @@ async def say(interaction: discord.Interaction, message: str):
 
 #--------------------------------------
 
-bot.tree.command(name="ban", description="Ban a member from the server")
+@bot.tree.command(name="ban", description="Ban a member from the server")
 async def ban(interaction: discord.Interaction, member: discord.Member, *, reason: str = "No reason provided"):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
@@ -647,7 +647,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
 async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Check if user has permission to run this command
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
-    if moderator_role not in interaction.user.roles and interaction.user.id != SPECIAL_USER_ID:
+    if moderator_role not in interaction.user.roles and interaction.user.id != WICKS:
         await interaction.response.send_message("You do not have permission to run auto promotions.", ephemeral=True)
         return
 
