@@ -645,7 +645,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
 
-@bot.tree.command(name="auto-sp", description="Automatically promotes users with over 3.5 hours of shift time")
+@bot.tree.command(name="shift-promo", description="Automatically promotes users with over 3.5 hours of shift time")
 async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Check if user has permission to run this command
     moderator_role = discord.utils.get(interaction.guild.roles, id=MODERATOR_ROLE_ID)
@@ -657,125 +657,148 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     await interaction.response.defer(ephemeral=True)
 
     # Process the leaderboard data
-    lines = re.split(r'\s*(?:-|–|\|)\s*', leaderboard) # Split by -, –, or | with optional spaces around
+    lines = leaderboard.strip().split('\n')
     promotions = []
     errors = []
-
-    # Parse each entry in the leaderboard
-    for line in lines:
-        if not line.strip():
-            continue
-
+    
+    # We'll process the data in pairs (name line followed by time line)
+    i = 0
+    while i < len(lines):
         try:
-            # Try to find a name and time part in the line
-            parts = [part.strip() for part in re.split(r'\s*(?:-|–|\|)\s*', line, maxsplit=1)]
-            if len(parts) != 2:
-                errors.append(f"Could not understand entry format: {line[:30]}...")
+            # Skip empty lines
+            if not lines[i].strip():
+                i += 1
                 continue
-
-            user_part = parts[0]
-            time_part = parts[1]
-
+                
+            # Check if we have enough lines left to process a pair
+            if i + 1 >= len(lines):
+                errors.append(f"Incomplete data: {lines[i][:30]}...")
+                break
+                
+            # Extract username line (may contain status indicators)
+            user_line = lines[i].strip()
+            # Extract time line
+            time_line = lines[i+1].strip()
+            
+            # Clean up username (remove status indicators)
+            user_part = user_line
+            if ':passed:' in user_part or ':failed:' in user_part:
+                parts = user_part.split(' ', 1)
+                if len(parts) > 1:
+                    user_part = parts[1].strip()
+            
             # Find the member
             member = None
-            if user_part.startswith("<@") and user_part.endswith(">"):
-                # This is a direct mention
-                user_id = int(user_part.replace("<@", "").replace(">", ""))
-                member = await interaction.guild.fetch_member(user_id)
-            else:
-                # Try to find by display name (more flexible)
-                username = user_part.lower()
+            mention_match = re.search(r'<@(\d+)>', user_part)
+            
+            if mention_match:
+                # Direct mention
+                user_id = int(mention_match.group(1))
+                try:
+                    member = await interaction.guild.fetch_member(user_id)
+                except discord.NotFound:
+                    pass
+            
+            # If not found by mention, try by name
+            if not member:
+                # Clean up the username (remove decorations)
+                clean_name = re.sub(r'@|\[.*?\]|\{.*?\}|\(.*?\)', '', user_part).strip()
+                
+                # Try to find by display name
                 for m in interaction.guild.members:
-                    if (username in m.name.lower() or
-                            username in m.display_name.lower() or
-                            (m.nick and username in m.nick.lower())):
+                    if (clean_name.lower() in m.name.lower() or
+                            clean_name.lower() in m.display_name.lower() or
+                            (m.nick and clean_name.lower() in m.nick.lower())):
                         member = m
                         break
-
+            
             if not member:
                 errors.append(f"Could not find member: {user_part}")
+                i += 2  # Move to the next pair
                 continue
-
-            # Extract hours and minutes (more flexible time parsing)
+            
+            # Extract hours and minutes
             hours = 0
             minutes = 0
-
-            hours_match = re.search(r'(\d+)\s*(?:hour|hours|h)', time_part.lower())
+            
+            hours_match = re.search(r'(\d+)\s*(?:hour|hours|h)', time_line.lower())
             if hours_match:
                 hours = int(hours_match.group(1))
-
-            minutes_match = re.search(r'(\d+)\s*(?:minute|minutes|min|m)', time_part.lower())
+            
+            minutes_match = re.search(r'(\d+)\s*(?:minute|minutes|min|m)', time_line.lower())
             if minutes_match:
                 minutes = int(minutes_match.group(1))
-
-            decimal_hours_match = re.search(r'(\d+\.?\d*)\s*(?:hour|hours|h)', time_part.lower())
-            if decimal_hours_match and not hours_match: # If we found decimal hours and not whole hours
-                try:
-                    hours = float(decimal_hours_match.group(1))
-                except ValueError:
-                    pass
-
+            
             # Calculate total hours
-            total_hours = hours + (minutes / 60) if isinstance(hours, int) else hours
-
-            # Check if eligible for promotion (over 3.5 hours)
-            if total_hours >= 3.5:
+            total_hours = hours + (minutes / 60)
+            
+            # Only process entries with passed status and sufficient hours
+            if ':passed:' in user_line and total_hours >= 3.5:
                 # Get the member's highest role
                 member_roles = [role for role in member.roles if role.name != "@everyone"]
                 if not member_roles:
                     errors.append(f"{member.display_name} has no roles")
+                    i += 2
                     continue
-
+                
                 highest_role = max(member_roles, key=lambda r: r.position)
-
+                
                 # Find the next higher role
                 guild_roles = sorted(interaction.guild.roles, key=lambda r: r.position)
                 next_role = None
-
-                for i, role in enumerate(guild_roles):
+                
+                for role in guild_roles:
                     if role.position > highest_role.position:
-
                         if role.id in [1302858922725736511, 1302303847737196594, 1291653950348595232, 1302303324279668916, 1291653369748000809, 1302303590945263616, 1291653558906650665, 1297501782607401011, 1291653487008157747, 1306270186264985620, 1291661520593223680, 1352344098832650250, 1351319004966424606, 1291657293443895376, 1291746295576526848, 1291746295576526848, 1284791394199666724, 1291746295576526848, 1291657211935985676, 1302859217643900958]:
                             continue
                         next_role = role
                         break
-
+                
                 if not next_role:
                     errors.append(f"No higher role found for {member.display_name}")
+                    i += 2
                     continue
-
+                
                 # Execute the promotion using your existing /promote command
                 command_channel = interaction.channel
                 await command_channel.send(f"/promote {member.mention} {next_role.mention} Automatic promotion for {total_hours:.1f} hours of shift time")
-
+                
                 promotions.append(f"{member.display_name}: {highest_role.name} → {next_role.name} ({total_hours:.1f} hours)")
-
+            
         except Exception as e:
-            errors.append(f"Error processing entry: {line[:30]}... - {str(e)}")
-
-
+            errors.append(f"Error processing entry: {lines[i][:30]}... - {str(e)}")
+        
+        i += 2  # Move to the next pair of lines
+    
+    # Create response message
     response = "Automatic promotion process completed!\n\n"
-
+    
     if promotions:
         response += "**Promotions:**\n"
         response += "\n".join(f"• {promotion}" for promotion in promotions)
-        response += "\n\n"
     else:
-        response += "No users were eligible for promotion.\n\n"
-
-    # Send first part of the message
+        response += "No users were eligible for promotion."
+    
+    # Send the response in chunks to avoid hitting Discord's message limit
     await interaction.followup.send(response[:1900], ephemeral=True)
     
-    # If there are errors, send them in a separate message
+    # Send errors in separate chunks if needed
     if errors:
-        error_msg = "**Errors:**\n"
-        error_msg += "\n".join(f"• {error}" for error in errors)
+        error_chunks = ["**Errors:**"]
+        current_chunk = "**Errors:**"
         
-        # Split error message if it's too long
-        for i in range(0, len(error_msg), 1900):
-            chunk = error_msg[i:i+1900]
-            await interaction.followup.send(chunk, ephemeral=True)
-    
+        for error in errors:
+            if len(current_chunk) + len(error) + 4 > 1900:  # Allow room for bullet point and newline
+                error_chunks.append(current_chunk)
+                current_chunk = "**Errors (continued):**"
+            
+            current_chunk += f"\n• {error}"
+        
+        error_chunks.append(current_chunk)
+        
+        # Send each chunk
+        for chunk in error_chunks[1:]:  # Skip the first element which is just the header
+            await interaction.followup.send(chunk[:1900], ephemeral=True)
 
 # Run the bot
 def main():
