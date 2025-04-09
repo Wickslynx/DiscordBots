@@ -645,6 +645,8 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
 
+
+
 @bot.tree.command(name="shift-promo", description="Automatically promotes users with over 3.5 hours of shift time")
 async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Check if user has permission to run this command
@@ -665,24 +667,17 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     promotions = []
     errors = []
 
-    i = 0
-    while i < len(entries) - 1:  # Process in pairs (user and time)
+    for entry in entries:
         try:
-            # Get the user part and the time part
-            user_part_raw = entries[i].strip()
-            time_part = entries[i+1].strip()
+            user_part_raw = entry.split(" - ")[0].strip() # Try to get the user part from the start
+            time_part_raw = entry.split(" - ")[-1].strip() # Try to get the time part from the end
+            print(f"Raw Entry: {entry}") # Debugging the whole entry
             print(f"Raw User Part: {user_part_raw}") # For debugging
-            print(f"Time Part: {time_part}") # For debugging
+            print(f"Raw Time Part: {time_part_raw}") # For debugging
 
             # Remove :passed: or :failed: from the user part
             user_part = re.sub(r'^:passed:|:failed:', '', user_part_raw).strip()
             print(f"Cleaned User Part: {user_part}") # For debugging
-
-            # If the time part contains a user name, it means we've moved to the next user
-            # So we need to separate the actual time from the next user
-            if ' - ' in time_part:
-                time_parts = time_part.split(' - ', 1)
-                time_part = time_parts[0].strip()
 
             # Find the member
             member = None
@@ -711,7 +706,6 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
 
             if not member:
                 errors.append(f"Could not find member: {user_part}")
-                i += 2  # Move to the next pair
                 continue
 
             # Extract hours and minutes from the time part
@@ -719,15 +713,15 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
             minutes = 0
             seconds = 0
 
-            hours_match = re.search(r'(\d+)\s*hour', time_part.lower())
+            hours_match = re.search(r'(\d+)\s*hour', time_part_raw.lower())
             if hours_match:
                 hours = int(hours_match.group(1))
 
-            minutes_match = re.search(r'(\d+)\s*minute', time_part.lower())
+            minutes_match = re.search(r'(\d+)\s*minute', time_part_raw.lower())
             if minutes_match:
                 minutes = int(minutes_match.group(1))
 
-            seconds_match = re.search(r'(\d+)\s*second', time_part.lower())
+            seconds_match = re.search(r'(\d+)\s*second', time_part_raw.lower())
             if seconds_match:
                 seconds = int(seconds_match.group(1))
 
@@ -740,7 +734,6 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                 member_roles = [role for role in member.roles if role.name != "@everyone"]
                 if not member_roles:
                     errors.append(f"{member.display_name} has no roles")
-                    i += 2
                     continue
 
                 highest_role = max(member_roles, key=lambda r: r.position)
@@ -758,7 +751,6 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
 
                 if not next_role:
                     errors.append(f"No higher role found for {member.display_name}")
-                    i += 2
                     continue
 
                 # Execute the promotion using your existing /promote command
@@ -768,9 +760,7 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
                 promotions.append(f"{member.display_name}: {highest_role.name} → {next_role.name} ({total_hours:.1f} hours)")
 
         except Exception as e:
-            errors.append(f"Error processing entry: {user_part[:30]}... - {str(e)}")
-
-        i += 2  # Move to the next user entry
+            errors.append(f"Error processing entry: {entry[:30]}... - {str(e)}")
 
     # Create response message
     response = "Automatic promotion process completed!\n\n"
@@ -801,6 +791,7 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
         # Send each chunk
         for chunk in error_chunks[1:]:  # Skip the first element which is just the header
             await interaction.followup.send(chunk[:1900], ephemeral=True)
+            
 
 
 # Run the bot
