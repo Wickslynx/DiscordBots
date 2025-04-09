@@ -644,6 +644,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member, new_ra
     else:
         await interaction.response.send_message("Internal error: channel not found!", ephemeral=True)
 
+
 @bot.tree.command(name="shift-promo", description="Automatically promotes users with over 3.5 hours of shift time")
 async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Check if user has permission to run this command
@@ -655,6 +656,9 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     # Defer response as this might take some time
     await interaction.response.defer(ephemeral=True)
 
+    # Clean the beginning of the leaderboard
+    leaderboard = leaderboard.split(" - ", 1)[-1].strip() if " - " in leaderboard else leaderboard.strip()
+
     # Process the leaderboard data
     entries = leaderboard.strip().split(" - ")
     print(f"Entries after splitting: {entries}") # For debugging
@@ -665,10 +669,14 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     while i < len(entries) - 1:  # Process in pairs (user and time)
         try:
             # Get the user part and the time part
-            user_part = entries[i].strip()
+            user_part_raw = entries[i].strip()
             time_part = entries[i+1].strip()
-            print(f"User Part: {user_part}") # For debugging
+            print(f"Raw User Part: {user_part_raw}") # For debugging
             print(f"Time Part: {time_part}") # For debugging
+
+            # Remove :passed: or :failed: from the user part
+            user_part = re.sub(r'^:passed:|:failed:', '', user_part_raw).strip()
+            print(f"Cleaned User Part: {user_part}") # For debugging
 
             # If the time part contains a user name, it means we've moved to the next user
             # So we need to separate the actual time from the next user
