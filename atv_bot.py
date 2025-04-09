@@ -753,7 +753,7 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
         except Exception as e:
             errors.append(f"Error processing entry: {line[:30]}... - {str(e)}")
 
-    # Create response message
+
     response = "Automatic promotion process completed!\n\n"
 
     if promotions:
@@ -763,11 +763,18 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
     else:
         response += "No users were eligible for promotion.\n\n"
 
+    # Send first part of the message
+    await interaction.followup.send(response[:1900], ephemeral=True)
+    
+    # If there are errors, send them in a separate message
     if errors:
-        response += "**Errors:**\n"
-        response += "\n".join(f"• {error}" for error in errors)
-
-    await interaction.followup.send(response, ephemeral=True)
+        error_msg = "**Errors:**\n"
+        error_msg += "\n".join(f"• {error}" for error in errors)
+        
+        # Split error message if it's too long
+        for i in range(0, len(error_msg), 1900):
+            chunk = error_msg[i:i+1900]
+            await interaction.followup.send(chunk, ephemeral=True)
     
 
 # Run the bot
