@@ -2822,6 +2822,45 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
             await interaction.followup.send(chunk[:1900], ephemeral=True)
             
 
+@bot.tree.command(name="delete", description="Delete messages containing a specific word in this channel")
+@app_commands.describe(word="The word to filter and delete")
+async def delete_word(interaction: discord.Interaction, word: str):
+    # Defer the response as this operation might take some time
+    await interaction.response.defer(ephemeral=True)
+
+    deleted_count = 0
+    error_count = 0
+
+    channel = interaction.channel  # Get the current channel
+
+    ot_role = discord.utils.get(interaction.guild.roles, id=OT_ROLE_ID)
+    if ot_role not in interaction.user.roles and interaction.user.id != WICKS:
+        await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
+        return
+
+    if isinstance(channel, discord.TextChannel) and channel.permissions_for(interaction.guild.me).read_messages and channel.permissions_for(interaction.guild.me).manage_messages:
+        try:
+            async for message in channel.history(limit=10000):  # You can adjust the limit
+                if word.lower() in message.content.lower():
+                    try:
+                        await message.delete()
+                        deleted_count += 1
+                        await asyncio.sleep(0.5)  # Small delay to avoid rate limiting
+                    except discord.errors.Forbidden:
+                        error_count += 1
+                    except Exception as e:
+                        print(f"Error deleting message: {e}")
+                        error_count += 1
+        except Exception as e:
+            print(f"Error checking channel {channel.name}: {e}")
+    else:
+        await interaction.followup.send("Oops! I can't read messages or delete them in this channel.", ephemeral=True)
+        return
+
+    # Send a follow-up message with the results
+    await interaction.followup.send(f"Finished filtering in this channel! Deleted {deleted_count} messages containing '{word}'. Failed to delete {error_count} messages.", ephemeral=True)
+
+
 # Error handler.
 @bot.event
 async def on_command_error(ctx, error):
