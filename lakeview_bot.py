@@ -94,11 +94,10 @@ class VoteView(discord.ui.View):
 class Bot(commands.Bot):
     def __init__(self):
      
-        
         super().__init__(
-            command_prefix='!',
+            command_prefix='::',
             intents=intents,
-            application_id='1336770228134088846'
+            application_id='1291561074964828203'
         )
 
     async def setup_hook(self):
