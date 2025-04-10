@@ -97,7 +97,7 @@ class Bot(commands.Bot):
         super().__init__(
             command_prefix='::',
             intents=intents,
-            application_id='1291561074964828203'
+            application_id='1359888968799359087'
         )
 
     async def setup_hook(self):
