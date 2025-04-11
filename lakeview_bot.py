@@ -2671,7 +2671,6 @@ async def auto_promotion(interaction: discord.Interaction, leaderboard: str):
             
 
 @bot.tree.command(name="delete", description="Delete messages containing a specific word in this channel")
-@app_commands.describe(word="The word to filter and delete")
 async def delete_word(interaction: discord.Interaction, word: str):
     # Defer the response as this operation might take some time
     await interaction.response.defer(ephemeral=True)
