@@ -2709,13 +2709,10 @@ async def delete_word(interaction: discord.Interaction, word: str):
     # Send a follow-up message with the results
     await interaction.followup.send(f"Finished filtering in this channel! Deleted {deleted_count} messages containing '{word}'. Failed to delete {error_count} messages.", ephemeral=True)
 
-@bot.tree.command(name="prefix", description="Change the current prefix.")
-async def prefix(interaction: discord.Interaction, prefix: Optional[str] = None):
-    if prefix is None:
-        await interaction.response.send_message(f"The current prefix is {BOT_PREFIX}!")
-    else:
-        BOT_PREFIX = prefix
-        await interaction.reponse.send_message(f"Updated bot prefix to {prefix}!")
+@bot.tree.command(name="prefix", description="Get the current prefix.")
+async def prefix(interaction: discord.Interaction):
+    await interaction.response.send_message(f"The current prefix is {BOT_PREFIX}!")
+
 
 # Error handler.
 @bot.event
