@@ -17,6 +17,37 @@ intents.members = True
 intents.message_content = True
 intents.reactions = True  
 
+
+
+
+REQUEST_CHANNEL_ID = 1359894733543182437
+INFRACTIONS_CHANNEL_ID = 1291561077435404353
+PROMOTIONS_CHANNEL_ID = 1291561077435404352
+SUGGEST_CHANNEL_ID = 1291561076223246412
+RETIREMENTS_CHANNEL_ID = 000000000000
+TRAINING_CHANNEL_ID = 1359895882727952445
+INTERNAL_AFFAIRS_ID = 1359895882727952445
+LOA_CHANNEL_ID = 1291561077435404356
+OT_ID = 1291561077435404356
+STAFF_TEAM_ID = 1291561077435404356
+AWAITING_TRAINING_ID = 1291561077435404356
+LOA_ID = 1291561077435404356
+HR_ID = 1291561077435404356
+
+BOT_PREFIX = "w!"
+
+
+MODERATOR_ROLE_ID = 1359895882727952445
+MODERATION_LOG_CHANNEL_ID = 1359897697209028648
+
+WARNINGS_FILE = "storage/warnings.json"
+TICKET_CHANNEL_ID = 1359887760785408214
+
+vote_counts = {}
+
+
+
+
 class ReactionButtons(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -95,7 +126,7 @@ class Bot(commands.Bot):
     def __init__(self):
      
         super().__init__(
-            command_prefix='::',
+            command_prefix=BOT_PREFIX,
             intents=intents,
             application_id='1359888968799359087'
         )
@@ -151,29 +182,6 @@ class Bot(commands.Bot):
 
 bot = Bot()
 
-
-REQUEST_CHANNEL_ID = 1359894733543182437
-INFRACTIONS_CHANNEL_ID = 1291561077435404353
-PROMOTIONS_CHANNEL_ID = 1291561077435404352
-SUGGEST_CHANNEL_ID = 1291561076223246412
-RETIREMENTS_CHANNEL_ID = 000000000000
-TRAINING_CHANNEL_ID = 1359895882727952445
-INTERNAL_AFFAIRS_ID = 1359895882727952445
-LOA_CHANNEL_ID = 1291561077435404356
-OT_ID = 1291561077435404356
-STAFF_TEAM_ID = 1291561077435404356
-AWAITING_TRAINING_ID = 1291561077435404356
-LOA_ID = 1291561077435404356
-HR_ID = 1291561077435404356
-
-
-MODERATOR_ROLE_ID = 1359895882727952445
-MODERATION_LOG_CHANNEL_ID = 1359897697209028648
-
-WARNINGS_FILE = "storage/warnings.json"
-TICKET_CHANNEL_ID = 1359887760785408214
-
-vote_counts = {}
 
 
 # Global variables to store ticket configuration
@@ -2700,6 +2708,13 @@ async def delete_word(interaction: discord.Interaction, word: str):
     # Send a follow-up message with the results
     await interaction.followup.send(f"Finished filtering in this channel! Deleted {deleted_count} messages containing '{word}'. Failed to delete {error_count} messages.", ephemeral=True)
 
+@bot.tree.command(name="prefix", description="Change the current prefix.")
+async def prefix(interaction: discod.Interaction, prefix=None):
+    if prefix is None:
+        await interaction.response.send_message(f"The current prefix is {BOT_PREFIX}!")
+    else:
+        BOT_PREFIX = prefix
+        await interaction.reponse.send_message(f"Updated bot prefix to {prefix}!")
 
 # Error handler.
 @bot.event
