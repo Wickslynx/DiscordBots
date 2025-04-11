@@ -35,7 +35,6 @@ AWAITING_TRAINING_ID = 1291561077435404356
 LOA_ID = 1291561077435404356
 HR_ID = 1291561077435404356
 
-BOT_PREFIX = "w!"
 
 
 MODERATOR_ROLE_ID = 1359895882727952445
@@ -127,7 +126,7 @@ class Bot(commands.Bot):
     def __init__(self):
      
         super().__init__(
-            command_prefix=BOT_PREFIX,
+            command_prefix='w!',
             intents=intents,
             application_id='1359888968799359087'
         )
