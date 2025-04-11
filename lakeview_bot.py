@@ -8,6 +8,7 @@ from discord.ext import tasks
 from pathlib import Path
 import random
 import string
+from typing import Optional
 
 
 Path("storage").mkdir(exist_ok=True)
@@ -2709,7 +2710,7 @@ async def delete_word(interaction: discord.Interaction, word: str):
     await interaction.followup.send(f"Finished filtering in this channel! Deleted {deleted_count} messages containing '{word}'. Failed to delete {error_count} messages.", ephemeral=True)
 
 @bot.tree.command(name="prefix", description="Change the current prefix.")
-async def prefix(interaction: discod.Interaction, prefix=None):
+async def prefix(interaction: discord.Interaction, prefix: Optional[str] = None):
     if prefix is None:
         await interaction.response.send_message(f"The current prefix is {BOT_PREFIX}!")
     else:
