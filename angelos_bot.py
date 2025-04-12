@@ -17,6 +17,85 @@ intents.members = True
 intents.message_content = True
 intents.reactions = True  
 
+class Bot(commands.Bot):
+    def __init__(self):
+        self.reaction_role_message_id = None
+        self.role_emoji_map = {
+            "🎉": None,                        
+            "📢": None,                   
+            "🎮": None,              
+            "💀": None,
+            "🚦": None,  # Session Ping
+            "📈": None,  # Poll notification
+            "🗓": None,   # Event notification
+            "📸": None    # Media notification
+        }
+        
+        super().__init__(
+            command_prefix=';',
+            intents=intents,
+            application_id='1336770228134088846'
+        )
+
+    async def setup_hook(self):
+        self.add_view(ReactionButtons())
+        self.add_view(TicketView(ticket_system, None))
+        self.add_view(TicketCreateView(ticket_system))
+        self.daily_check.start()
+        
+        global vote_counts
+        try:
+            with open('storage/vote_counts.json', 'r') as file:
+                vote_counts = json.load(file)
+        except FileNotFoundError:
+            vote_counts = {}
+            
+        await self.tree.sync()
+        print("Commands synced globally")
+        
+        try:
+            with open('storage/reaction_roles.json', 'r') as file:
+                data = json.load(file)
+                self.reaction_role_message_id = data.get('message_id')
+                self.role_emoji_map = data.get('roles', self.role_emoji_map)
+        except FileNotFoundError:
+            print("No reaction role data found. It will be created when the command is used.")
+
+    @tasks.loop(time=time(0, 0))
+    async def daily_check(self):
+        loa_data = load_loa_data()
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        for user_id, info in list(loa_data.items()):
+            if info['start_date'] == today:
+                try:
+                    user = await self.fetch_user(int(user_id))
+                    await user.send(f"Your LOA period has started today and will end on {info['end_date']}")
+                except Exception as e:
+                    print(f"Could not send start notification to user {user_id}: {str(e)}")
+
+            if info['end_date'] == today:
+                try:
+                    user = await self.fetch_user(int(user_id))
+                    await user.send("Your LOA period has ended today!")
+
+                    guild = self.get_guild(1223694900084867247)  
+                    if guild:
+                        member = guild.get_member(int(user_id))
+                        if member:
+                            await member.remove_roles(guild.get_role(LOA_ID))
+                    del loa_data[user_id]
+                    save_loa_data(loa_data)
+                except Exception as e:
+                    print(f"Could not process end of LOA for user {user_id}: {str(e)}")
+        
+    @daily_check.before_loop
+    async def before_daily_check(self):
+        await self.wait_until_ready()
+
+bot = Bot()
+
+
 
 WELCOME_CHANNEL_ID = 1337432747094048890
 LEAVES_CHANNEL_ID = 1337432777066549288
@@ -54,7 +133,7 @@ TICKET_CHANNEL_ID = 1355452294417879121
 
 vote_counts = {}
 
-WICKS = self.bot.get_user(1159829981803860009)
+WICKS = bot.get_user(1159829981803860009)
 
 
 # Global variables to store ticket configuration
@@ -138,84 +217,7 @@ class VoteView(discord.ui.View):
     async def downvote_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await handle_downvote(interaction, self)
 
-class Bot(commands.Bot):
-    def __init__(self):
-        self.reaction_role_message_id = None
-        # Updated role_emoji_map with new roles
-        self.role_emoji_map = {
-            "🎉": None,                        
-            "📢": None,                   
-            "🎮": None,              
-            "💀": None,
-            "🚦": None,  # Session Ping
-            "📈": None,  # Poll notification
-            "🗓": None,   # Event notification
-            "📸": None    # Media notification
-        }
-        
-        super().__init__(
-            command_prefix=';',
-            intents=intents,
-            application_id='1336770228134088846'
-        )
 
-    async def setup_hook(self):
-        self.add_view(ReactionButtons())
-        self.add_view(TicketView(ticket_system, None))
-        self.add_view(TicketCreateView(ticket_system))
-        self.daily_check.start()
-        
-        global vote_counts
-        try:
-            with open('storage/vote_counts.json', 'r') as file:
-                vote_counts = json.load(file)
-        except FileNotFoundError:
-            vote_counts = {}
-            
-        await self.tree.sync()
-        print("Commands synced globally")
-        
-        try:
-            with open('storage/reaction_roles.json', 'r') as file:
-                data = json.load(file)
-                self.reaction_role_message_id = data.get('message_id')
-                self.role_emoji_map = data.get('roles', self.role_emoji_map)
-        except FileNotFoundError:
-            print("No reaction role data found. It will be created when the command is used.")
-
-    @tasks.loop(time=time(0, 0))
-    async def daily_check(self):
-        loa_data = load_loa_data()
-        today = datetime.now().strftime('%Y-%m-%d')
-        
-        for user_id, info in list(loa_data.items()):
-            if info['start_date'] == today:
-                try:
-                    user = await self.fetch_user(int(user_id))
-                    await user.send(f"Your LOA period has started today and will end on {info['end_date']}")
-                except Exception as e:
-                    print(f"Could not send start notification to user {user_id}: {str(e)}")
-
-            if info['end_date'] == today:
-                try:
-                    user = await self.fetch_user(int(user_id))
-                    await user.send("Your LOA period has ended today!")
-
-                    guild = self.get_guild(1223694900084867247)  
-                    if guild:
-                        member = guild.get_member(int(user_id))
-                        if member:
-                            await member.remove_roles(guild.get_role(LOA_ID))
-                    del loa_data[user_id]
-                    save_loa_data(loa_data)
-                except Exception as e:
-                    print(f"Could not process end of LOA for user {user_id}: {str(e)}")
-        
-    @daily_check.before_loop
-    async def before_daily_check(self):
-        await self.wait_until_ready()
-
-bot = Bot()
 
 
 class TicketSystem:
