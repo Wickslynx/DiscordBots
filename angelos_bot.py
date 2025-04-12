@@ -1754,7 +1754,7 @@ class SecurityMonitor(commands.Cog):
                     
                     utc_now = datetime.now(timezone.utc)
                     if entry.target.id == after.id and entry.created_at > utc_now - timedelta(seconds=5):
-                        user = entry.use
+                        user = entry.user
                         
                         # Check if this was done by a staff member
                         is_staff = False
