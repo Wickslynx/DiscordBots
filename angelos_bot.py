@@ -1581,7 +1581,7 @@ class SecurityMonitor(commands.Cog):
             title=f"Security {severity.upper()}",
             description=message,
             color=discord.Color.red() if severity == "critical" else discord.Color.orange(),
-            timestamp=datetime.datetime.utcnow()
+            timestamp=datetime.utcnow()
         )
         
         if evidence:
@@ -1605,7 +1605,7 @@ class SecurityMonitor(commands.Cog):
     
     def record_staff_action(self, user_id, action_type, guild_id):
         """Record an action for monitoring frequency"""
-        current_time = datetime.datetime.utcnow().timestamp()
+        current_time = datetime.utcnow().timestamp()
         
         # Initialize tracking for this user if not exists
         if user_id not in self.action_history:
@@ -1636,7 +1636,7 @@ class SecurityMonitor(commands.Cog):
         
         # Get timestamps of this action type
         timestamps = self.action_history[user_id][guild_id][action_type]
-        current_time = datetime.datetime.utcnow().timestamp()
+        current_time = datetime.utcnow().timestamp()
         
         # Filter to only include actions within the suspicious timeframe
         timeframe = SUSPICIOUS_ACTIONS[action_type]['timeframe']
@@ -1648,7 +1648,7 @@ class SecurityMonitor(commands.Cog):
     @tasks.loop(minutes=5)
     async def clean_action_history(self):
         """Clean old entries from action history"""
-        current_time = datetime.datetime.utcnow().timestamp()
+        current_time = datetime.utcnow().timestamp()
         for user_id in list(self.action_history.keys()):
             for guild_id in list(self.action_history[user_id].keys()):
                 for action_type in list(self.action_history[user_id][guild_id].keys()):
@@ -1751,7 +1751,7 @@ class SecurityMonitor(commands.Cog):
             # Find who added the role
             try:
                 async for entry in guild.audit_logs(limit=10, action=discord.AuditLogAction.member_role_update):
-                    if entry.target.id == after.id and entry.created_at > datetime.datetime.utcnow() - datetime.timedelta(seconds=5):
+                    if entry.target.id == after.id and entry.created_at > datetime.utcnow() - datetime.timedelta(seconds=5):
                         user = entry.user
                         
                         # Check if this was done by a staff member
@@ -1828,7 +1828,7 @@ class SecurityMonitor(commands.Cog):
         # Check recent audit logs for kicks
         try:
             async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.kick):
-                if entry.target.id == member.id and entry.created_at > datetime.datetime.utcnow() - datetime.timedelta(seconds=5):
+                if entry.target.id == member.id and entry.created_at > datetime.utcnow() - datetime.timedelta(seconds=5):
                     staff_user = entry.user
                     
                     # Check if this was done by a staff member
