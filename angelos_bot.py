@@ -1976,7 +1976,7 @@ class SecurityMonitor(commands.Cog):
             await ctx.send(f"Alert mode set to: {value} - {mode_descriptions[value]}")
             
         else:
-            await ctx.send("Unknown setting. Available settings: log_channel, staff_role, ignore_user, alert_mode")
+            await ctx.send("Unknown setting. Available settings: log_channel, monitor_role, ignore_user, alert_mode")
 
     @secmon.command(name="status")
     @commands.has_permissions(administrator=True)
