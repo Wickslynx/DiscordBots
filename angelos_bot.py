@@ -133,7 +133,7 @@ TICKET_CHANNEL_ID = 1355452294417879121
 
 vote_counts = {}
 
-WICKS = bot.get_user(1159829981803860009)
+WICKS = await bot.fetch_user(1159829981803860009)
 
 
 # Global variables to store ticket configuration
