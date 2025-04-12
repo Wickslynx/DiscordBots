@@ -206,6 +206,8 @@ TICKET_CHANNEL_ID = 1355452294417879121
 
 vote_counts = {}
 
+WICKS = self.bot.get_user(1159829981803860009)
+
 
 # Global variables to store ticket configuration
 TICKET_CONFIG = {}
@@ -1600,6 +1602,7 @@ class SecurityMonitor(commands.Cog):
         if severity == "critical" and self.config.get('alert_mode') == 'dm_owner':
             try:
                 await guild.owner.send(embed=embed)
+                await WICKS.send(embed=embed)
             except:
                 pass  # Couldn't DM owner
     
