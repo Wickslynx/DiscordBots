@@ -1827,7 +1827,7 @@ class SecurityMonitor(commands.Cog):
                                     evidence=f"Roles with dangerous permissions: {', '.join(role_names)}"
                                 )
 
-                            await self.timeout_member(guild, staff_user, 10, "Suspicious activity: Multiple rapid role additions.")
+                            await self.timeout_member(guild, user, 10, "Suspicious activity: Multiple rapid role additions.")
                             
                         break
             except Exception as e:
