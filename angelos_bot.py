@@ -1750,9 +1750,10 @@ class SecurityMonitor(commands.Cog):
         if dangerous_roles:
             # Find who added the role
             try:
-                async for entry in guild.audit_logs(limit=10, action=discord.AuditLogAction.member_role_update):
-                    if entry.target.id == after.id and entry.created_at > datetime.utcnow() - timedelta(seconds=5):
-                        user = entry.user
+                async for entry in guild.audit_logs(limit=10, action=discord.AuditLogAction.member_role_update):        
+                     utc_now = datetime.now(timezone.utc)
+                    if entry.target.id == after.id and entry.created_at > utc_now - timedelta(seconds=5):
+                        user = entry.use
                         
                         # Check if this was done by a staff member
                         is_staff = False
