@@ -1795,6 +1795,9 @@ class SecurityMonitor(commands.Cog):
                                     f"Staff member {user.mention} gave dangerous roles to {after.mention}",
                                     evidence=f"Roles with dangerous permissions: {', '.join(role_names)}"
                                 )
+
+                            await self.timeout_member(guild, user, 10, "Suspicious activity: Multiple rapid role additions.")
+                            
                         break
             except Exception as e:
                 print(f"Error in member update monitoring: {e}")
@@ -1829,6 +1832,9 @@ class SecurityMonitor(commands.Cog):
                                 severity="critical",
                                 evidence=f"Banned {user} - This is part of multiple rapid bans"
                             )
+
+                            await self.timeout_member(guild, user, 30, "Suspicious activity: Multiple rapid bans.")
+                            
                     break
         except Exception as e:
             print(f"Error in ban monitoring: {e}")
@@ -1865,6 +1871,8 @@ class SecurityMonitor(commands.Cog):
                                 severity="critical",
                                 evidence=f"Kicked {member} - This is part of multiple rapid kicks"
                             )
+
+                            await self.timeout_member(guild, user, 30, "Suspicious activity: Multiple rapid kicks.")
                     break
         except Exception as e:
             print(f"Error in kick monitoring: {e}")
@@ -1900,7 +1908,9 @@ class SecurityMonitor(commands.Cog):
                                 severity="critical",
                                 evidence=f"Deleted channel {channel.name} - This is part of multiple rapid channel deletions"
                             )
-                    break
+
+                            await self.timeout_member(guild, user, 60, "Suspicious activity: Multiple rapid channel deletions.")
+
         except Exception as e:
             print(f"Error in channel delete monitoring: {e}")
 
@@ -1908,7 +1918,7 @@ class SecurityMonitor(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def secmon(self, ctx):
         """Security monitoring configuration commands"""
-        await ctx.send("Security monitoring commands. Use `secmon set` to configure settings.")
+        await ctx.send("Security monitoring commands. Use `quarantine set` to configure settings.")
 
     @secmon.command(name="set")
     @commands.has_permissions(administrator=True)
@@ -2955,8 +2965,8 @@ async def infract(interaction: discord.Interaction, user: discord.Member, punish
     if channel:
         await channel.send(f"{user.mention}")
         embed = discord.Embed(
-            title="Infraction",
-            description=f'The high ranking team has decided to infract you! \n\n **User getting infracted**:\n {user.mention} \n\n **Punishment**:\n {punishment} \n\n **Reason**:\n {reason} \n\n **Notes**: {notes} ',
+            title="Staff Infraction",
+            description=f'The Internal Affairs team has decided to infract you. Please do not create any drama by this infraction. Please open a appeal ticket if you have any problems. \n\n**User getting infracted**:\n {user.mention} \n\n **Punishment**:\n {punishment} \n\n **Reason**:\n {reason} \n\n **Notes**: {notes} ',
             color=discord.Color.red(),
             timestamp=datetime.utcnow()
         )
