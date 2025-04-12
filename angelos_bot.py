@@ -1619,10 +1619,10 @@ class SecurityMonitor(commands.Cog):
     async def timeout_member(self, guild, member, minutes, reason):
         """Apply timeout to a member"""
         try:
-            # Calculate the timeout until time
-            until = datetime.utcnow() + timedelta(minutes=minutes)
+            # Calculate the timeout until time (using discord.utils.utcnow() for aware datetime)
+            until = discord.utils.utcnow() + timedelta(minutes=minutes)
             
-            # Apply the timeout (using the correct method)
+            # Apply the timeout
             await member.timeout(until, reason=reason)
             
             # Log the timeout action
