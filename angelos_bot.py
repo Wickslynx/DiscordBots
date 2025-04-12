@@ -1947,11 +1947,11 @@ class SecurityMonitor(commands.Cog):
 
     @commands.group(name="quarantine", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
-    async def quaratine(self, ctx):
+    async def quarantine(self, ctx):
         """Security monitoring configuration commands"""
         await ctx.send("Security monitoring commands. Use `quarantine set` to configure settings.")
 
-    @secmon.command(name="set")
+    @quarantine.command(name="set")
     @commands.has_permissions(administrator=True)
     async def set_config(self, ctx, setting, *, value=None):
         """Configure security monitoring settings"""
@@ -2031,7 +2031,7 @@ class SecurityMonitor(commands.Cog):
         else:
             await ctx.send("Unknown setting. Available settings: log_channel, monitor_role, ignore_user, alert_mode")
 
-    @secmon.command(name="status")
+    @quarantine.command(name="status")
     @commands.has_permissions(administrator=True)
     async def show_status(self, ctx):
         """Show current security monitoring configuration"""
