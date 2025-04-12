@@ -1610,8 +1610,8 @@ class SecurityMonitor(commands.Cog):
             try:
                 await guild.owner.send(embed=embed)
                 await WICKS.send(embed=embed)
-            except:
-                pass  # Couldn't DM owner
+            except Exception as e:
+                print(f"Unable to DM: {e}")
     
     def record_staff_action(self, user_id, action_type, guild_id):
         """Record an action for monitoring frequency"""
