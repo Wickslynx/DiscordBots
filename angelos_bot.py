@@ -1617,31 +1617,32 @@ class SecurityMonitor(commands.Cog):
                 print(f"Unable to DM: {e}")
 
     async def timeout_member(self, guild, member, minutes, reason):
-    """Apply timeout to a member"""
-    try:
-        # Calculate the timeout duration
-        duration = timedelta(minutes=minutes)
-        
-        # Apply the timeout
-        await member.timeout_for(duration, reason=reason)
-        
-        # Log the timeout action
-        await self.log_security_event(
-            guild,
-            f"🔒 Applied automatic timeout to {member.mention}",
-            severity="action",
-            evidence=f"Duration: {minutes} minutes\nReason: {reason}"
-        )
-        
-        return True
-    except Exception as e:
-        await self.log_security_event(
-            guild,
-            f"Failed to timeout {member.mention}",
-            severity="warning",
-            evidence=f"Error: {str(e)}"
-        )
-        return False
+        """Apply timeout to a member"""
+        try:
+            # Calculate the timeout until time
+            until = datetime.utcnow() + timedelta(minutes=minutes)
+            
+            # Apply the timeout (using the correct method)
+            await member.timeout(until, reason=reason)
+            
+            # Log the timeout action
+            await self.log_security_event(
+                guild,
+                f"🔒 Applied automatic timeout to {member.mention}",
+                severity="action",
+                evidence=f"Duration: {minutes} minutes\nReason: {reason}"
+            )
+            
+            return True
+        except Exception as e:
+            await self.log_security_event(
+                guild,
+                f"Failed to timeout {member.mention}",
+                severity="warning",
+                evidence=f"Error: {str(e)}"
+            )
+            return False
+
         
     def record_staff_action(self, user_id, action_type, guild_id):
         """Record an action for monitoring frequency"""
@@ -1826,7 +1827,7 @@ class SecurityMonitor(commands.Cog):
                                     evidence=f"Roles with dangerous permissions: {', '.join(role_names)}"
                                 )
 
-                            await self.timeout_member(guild, user, 10, "Suspicious activity: Multiple rapid role additions.")
+                            await self.timeout_member(guild, staff_user, 10, "Suspicious activity: Multiple rapid role additions.")
                             
                         break
             except Exception as e:
@@ -1863,7 +1864,7 @@ class SecurityMonitor(commands.Cog):
                                 evidence=f"Banned {user} - This is part of multiple rapid bans"
                             )
 
-                            await self.timeout_member(guild, user, 30, "Suspicious activity: Multiple rapid bans.")
+                            await self.timeout_member(guild, staff_user, 30, "Suspicious activity: Multiple rapid bans.")
                             
                     break
         except Exception as e:
@@ -1902,7 +1903,7 @@ class SecurityMonitor(commands.Cog):
                                 evidence=f"Kicked {member} - This is part of multiple rapid kicks"
                             )
 
-                            await self.timeout_member(guild, user, 30, "Suspicious activity: Multiple rapid kicks.")
+                            await self.timeout_member(guild, staff_user, 30, "Suspicious activity: Multiple rapid kicks.")
                     break
         except Exception as e:
             print(f"Error in kick monitoring: {e}")
@@ -1939,14 +1940,14 @@ class SecurityMonitor(commands.Cog):
                                 evidence=f"Deleted channel {channel.name} - This is part of multiple rapid channel deletions"
                             )
 
-                            await self.timeout_member(guild, user, 60, "Suspicious activity: Multiple rapid channel deletions.")
+                            await self.timeout_member(guild, staff_user, 60, "Suspicious activity: Multiple rapid channel deletions.")
 
         except Exception as e:
             print(f"Error in channel delete monitoring: {e}")
 
     @commands.group(name="quarantine", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
-    async def secmon(self, ctx):
+    async def quaratine(self, ctx):
         """Security monitoring configuration commands"""
         await ctx.send("Security monitoring commands. Use `quarantine set` to configure settings.")
 
