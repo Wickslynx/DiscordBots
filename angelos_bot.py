@@ -2507,7 +2507,7 @@ async def purge(interaction: discord.Interaction, amount: int):
 
     try:
         # Delete messages
-        deleted = await interaction.channel.purge(limit=amount)
+        deleted = await interaction.channel.purge(limit=amount+1)
 
         # Log the purge in a moderation log channel
         log_channel = interaction.guild.get_channel(MODERATION_LOG_CHANNEL_ID)
