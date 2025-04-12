@@ -1892,7 +1892,7 @@ class SecurityMonitor(commands.Cog):
         except Exception as e:
             print(f"Error in channel delete monitoring: {e}")
 
-    @commands.group(name="secmon", invoke_without_command=True)
+    @commands.group(name="quarantine", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def secmon(self, ctx):
         """Security monitoring configuration commands"""
@@ -1919,7 +1919,7 @@ class SecurityMonitor(commands.Cog):
             except ValueError:
                 await ctx.send("Please provide a valid channel ID or mention.")
                 
-        elif setting == "staff_role":
+        elif setting == "monitor_role":
             if value.startswith("<@&") and value.endswith(">"):
                 value = value[3:-1]
                 
