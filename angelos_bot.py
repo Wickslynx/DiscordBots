@@ -31,6 +31,8 @@ class Bot(commands.Bot):
             "📸": None    # Media notification
         }
         
+        self.WICKS = None
+        
         super().__init__(
             command_prefix=';',
             intents=intents,
@@ -42,6 +44,8 @@ class Bot(commands.Bot):
         self.add_view(TicketView(ticket_system, None))
         self.add_view(TicketCreateView(ticket_system))
         self.daily_check.start()
+
+        self.WICKS = await bot.fetch_user(1159829981803860009)
         
         global vote_counts
         try:
@@ -133,7 +137,6 @@ TICKET_CHANNEL_ID = 1355452294417879121
 
 vote_counts = {}
 
-WICKS = await bot.fetch_user(1159829981803860009)
 
 
 # Global variables to store ticket configuration
@@ -1609,7 +1612,7 @@ class SecurityMonitor(commands.Cog):
         if severity == "critical" and self.config.get('alert_mode') == 'dm_owner':
             try:
                 await guild.owner.send(embed=embed)
-                await WICKS.send(embed=embed)
+                await self.WICKS.send(embed=embed)
             except Exception as e:
                 print(f"Unable to DM: {e}")
     
