@@ -107,7 +107,7 @@ class Bot(commands.Bot):
         }
         
         super().__init__(
-            command_prefix='!',
+            command_prefix=';',
             intents=intents,
             application_id='1336770228134088846'
         )
@@ -1512,6 +1512,532 @@ async def training_request(interaction: discord.Interaction):
         await interaction.response.send_message("Internal error: Channel not found.", ephemeral=True)
 
 
+# Define dangerous permissions that should be monitored
+DANGEROUS_PERMISSIONS = [
+    'administrator',
+    'ban_members',
+    'kick_members',
+    'manage_channels',
+    'manage_guild',
+    'manage_roles',
+    'manage_webhooks',
+    'mention_everyone'
+]
+
+# Define suspicious activities that might indicate nuke behavior
+SUSPICIOUS_ACTIONS = {
+    'mass_ban': {'count': 5, 'timeframe': 60},  # 5 bans in 60 seconds
+    'mass_kick': {'count': 5, 'timeframe': 60},  # 5 kicks in 60 seconds
+    'mass_channel_delete': {'count': 3, 'timeframe': 60},  # 3 channel deletions in 60 seconds
+    'mass_role_delete': {'count': 3, 'timeframe': 60},  # 3 role deletions in 60 seconds
+    'role_permission_change': {'count': 3, 'timeframe': 60},  # 3 permission changes in 60 seconds
+    'dangerous_role_assignment': {'count': 3, 'timeframe': 60},  # 3 dangerous role assignments in 60 seconds
+}
+
+# Add this class after your other code and before bot.run()
+class SecurityMonitor(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.action_history = {}  # Tracks staff actions
+        self.config = {}
+        self.load_config()
+        
+        # Start background task to periodically clean old action history
+        self.clean_action_history.start()
+    
+    def load_config(self):
+        try:
+            if os.path.exists('security_config.json'):
+                with open('security_config.json', 'r') as f:
+                    self.config = json.load(f)
+            else:
+                # Default configuration
+                self.config = {
+                    'log_channel_id': None,
+                    'staff_roles': [],
+                    'ignored_users': [],
+                    'alert_mode': 'log'  # 'log', 'dm_owner', or 'auto_revert'
+                }
+                self.save_config()
+        except Exception as e:
+            print(f"Error loading security config: {e}")
+            self.config = {
+                'log_channel_id': None,
+                'staff_roles': [],
+                'ignored_users': [],
+                'alert_mode': 'log'
+            }
+    
+    def save_config(self):
+        try:
+            with open('security_config.json', 'w') as f:
+                json.dump(self.config, f, indent=4)
+        except Exception as e:
+            print(f"Error saving security config: {e}")
+    
+    async def log_security_event(self, guild, message, severity="warning", evidence=None):
+        """Log security events to the designated channel"""
+        embed = discord.Embed(
+            title=f"Security {severity.upper()}",
+            description=message,
+            color=discord.Color.red() if severity == "critical" else discord.Color.orange(),
+            timestamp=datetime.datetime.utcnow()
+        )
+        
+        if evidence:
+            embed.add_field(name="Details", value=evidence, inline=False)
+        
+        # Log to channel if configured
+        if self.config.get('log_channel_id'):
+            try:
+                channel = self.bot.get_channel(int(self.config['log_channel_id']))
+                if channel:
+                    await channel.send(embed=embed)
+            except Exception as e:
+                print(f"Failed to log to channel: {e}")
+        
+        # Alert server owner if configured
+        if severity == "critical" and self.config.get('alert_mode') == 'dm_owner':
+            try:
+                await guild.owner.send(embed=embed)
+            except:
+                pass  # Couldn't DM owner
+    
+    def record_staff_action(self, user_id, action_type, guild_id):
+        """Record an action for monitoring frequency"""
+        current_time = datetime.datetime.utcnow().timestamp()
+        
+        # Initialize tracking for this user if not exists
+        if user_id not in self.action_history:
+            self.action_history[user_id] = {}
+        
+        if guild_id not in self.action_history[user_id]:
+            self.action_history[user_id][guild_id] = {}
+            
+        if action_type not in self.action_history[user_id][guild_id]:
+            self.action_history[user_id][guild_id][action_type] = []
+        
+        # Add current action timestamp
+        self.action_history[user_id][guild_id][action_type].append(current_time)
+    
+    def check_suspicious_activity(self, user_id, action_type, guild_id):
+        """Check if recent actions constitute suspicious activity"""
+        if action_type not in SUSPICIOUS_ACTIONS:
+            return False
+            
+        if user_id not in self.action_history:
+            return False
+            
+        if guild_id not in self.action_history[user_id]:
+            return False
+            
+        if action_type not in self.action_history[user_id][guild_id]:
+            return False
+        
+        # Get timestamps of this action type
+        timestamps = self.action_history[user_id][guild_id][action_type]
+        current_time = datetime.datetime.utcnow().timestamp()
+        
+        # Filter to only include actions within the suspicious timeframe
+        timeframe = SUSPICIOUS_ACTIONS[action_type]['timeframe']
+        recent_actions = [t for t in timestamps if current_time - t <= timeframe]
+        
+        # Check if count exceeds the suspicious threshold
+        return len(recent_actions) >= SUSPICIOUS_ACTIONS[action_type]['count']
+    
+    @tasks.loop(minutes=5)
+    async def clean_action_history(self):
+        """Clean old entries from action history"""
+        current_time = datetime.datetime.utcnow().timestamp()
+        for user_id in list(self.action_history.keys()):
+            for guild_id in list(self.action_history[user_id].keys()):
+                for action_type in list(self.action_history[user_id][guild_id].keys()):
+                    # Keep only actions from last 10 minutes
+                    self.action_history[user_id][guild_id][action_type] = [
+                        t for t in self.action_history[user_id][guild_id][action_type]
+                        if current_time - t <= 600  # 10 minutes
+                    ]
+    
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before, after):
+        """Monitor role permission changes"""
+        guild = after.guild
+        
+        # Check if significant permission changes were made
+        dangerous_changes = []
+        
+        for perm_name in DANGEROUS_PERMISSIONS:
+            before_value = getattr(before.permissions, perm_name)
+            after_value = getattr(after.permissions, perm_name)
+            
+            if before_value != after_value and after_value:
+                dangerous_changes.append(perm_name)
+        
+        if dangerous_changes:
+            # Get audit log to see who made the change
+            try:
+                async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.role_update):
+                    if entry.target.id == after.id:
+                        user = entry.user
+                        
+                        # Check if this was done by a staff member
+                        is_staff = False
+                        if user.id in self.config.get('ignored_users', []):
+                            return  # Ignore trusted users
+                            
+                        for role in user.roles:
+                            if role.id in self.config.get('staff_roles', []):
+                                is_staff = True
+                                break
+                        
+                        if is_staff:
+                            # Record this action
+                            self.record_staff_action(user.id, 'role_permission_change', guild.id)
+                            
+                            # Check if it's part of suspicious pattern
+                            if self.check_suspicious_activity(user.id, 'role_permission_change', guild.id):
+                                await self.log_security_event(
+                                    guild,
+                                    f"⚠️ CRITICAL: Staff member {user.mention} making multiple dangerous permission changes",
+                                    severity="critical",
+                                    evidence=f"Changed {after.name} role permissions, adding: {', '.join(dangerous_changes)}"
+                                )
+                            else:
+                                await self.log_security_event(
+                                    guild,
+                                    f"Staff member {user.mention} added dangerous permissions to role {after.name}",
+                                    evidence=f"Added permissions: {', '.join(dangerous_changes)}"
+                                )
+                            
+                            # Auto-revert if configured
+                            if self.config.get('alert_mode') == 'auto_revert':
+                                try:
+                                    # Revert permissions
+                                    await after.edit(permissions=before.permissions)
+                                    await self.log_security_event(
+                                        guild,
+                                        f"Automatically reverted dangerous permission changes to {after.name} role",
+                                        evidence=f"Reverted permissions: {', '.join(dangerous_changes)}"
+                                    )
+                                except Exception as e:
+                                    await self.log_security_event(
+                                        guild, 
+                                        f"Failed to auto-revert dangerous permission changes to {after.name} role: {str(e)}",
+                                        severity="critical"
+                                    )
+                        break
+            except Exception as e:
+                print(f"Error in role update monitoring: {e}")
+    
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        """Monitor when members are given dangerous roles"""
+        guild = after.guild
+        
+        # Check for dangerous role additions
+        new_roles = set(after.roles) - set(before.roles)
+        
+        if not new_roles:
+            return
+            
+        dangerous_roles = []
+        for role in new_roles:
+            for perm_name in DANGEROUS_PERMISSIONS:
+                if getattr(role.permissions, perm_name):
+                    dangerous_roles.append(role)
+                    break
+        
+        if dangerous_roles:
+            # Find who added the role
+            try:
+                async for entry in guild.audit_logs(limit=10, action=discord.AuditLogAction.member_role_update):
+                    if entry.target.id == after.id and entry.created_at > datetime.datetime.utcnow() - datetime.timedelta(seconds=5):
+                        user = entry.user
+                        
+                        # Check if this was done by a staff member
+                        is_staff = False
+                        if user.id in self.config.get('ignored_users', []):
+                            return  # Ignore trusted users
+                            
+                        for role in user.roles:
+                            if role.id in self.config.get('staff_roles', []):
+                                is_staff = True
+                                break
+                        
+                        if is_staff:
+                            # Record this action
+                            self.record_staff_action(user.id, 'dangerous_role_assignment', guild.id)
+                            
+                            # Check if it's part of suspicious pattern
+                            role_names = [role.name for role in dangerous_roles]
+                            if self.check_suspicious_activity(user.id, 'dangerous_role_assignment', guild.id):
+                                await self.log_security_event(
+                                    guild,
+                                    f"⚠️ CRITICAL: Staff member {user.mention} assigning multiple dangerous roles",
+                                    severity="critical",
+                                    evidence=f"Gave {after.mention} the following roles with dangerous permissions: {', '.join(role_names)}"
+                                )
+                            else:
+                                await self.log_security_event(
+                                    guild,
+                                    f"Staff member {user.mention} gave dangerous roles to {after.mention}",
+                                    evidence=f"Roles with dangerous permissions: {', '.join(role_names)}"
+                                )
+                        break
+            except Exception as e:
+                print(f"Error in member update monitoring: {e}")
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild, user):
+        """Monitor for mass bans"""
+        try:
+            async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.ban):
+                if entry.target.id == user.id:
+                    staff_user = entry.user
+                    
+                    # Check if this was done by a staff member
+                    is_staff = False
+                    if staff_user.id in self.config.get('ignored_users', []):
+                        return  # Ignore trusted users
+                        
+                    for role in staff_user.roles:
+                        if role.id in self.config.get('staff_roles', []):
+                            is_staff = True
+                            break
+                    
+                    if is_staff:
+                        # Record this action
+                        self.record_staff_action(staff_user.id, 'mass_ban', guild.id)
+                        
+                        # Check if it's part of suspicious pattern
+                        if self.check_suspicious_activity(staff_user.id, 'mass_ban', guild.id):
+                            await self.log_security_event(
+                                guild,
+                                f"⚠️ CRITICAL: Staff member {staff_user.mention} performing mass bans",
+                                severity="critical",
+                                evidence=f"Banned {user} - This is part of multiple rapid bans"
+                            )
+                    break
+        except Exception as e:
+            print(f"Error in ban monitoring: {e}")
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        """Monitor for mass kicks"""
+        guild = member.guild
+        # Check recent audit logs for kicks
+        try:
+            async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.kick):
+                if entry.target.id == member.id and entry.created_at > datetime.datetime.utcnow() - datetime.timedelta(seconds=5):
+                    staff_user = entry.user
+                    
+                    # Check if this was done by a staff member
+                    is_staff = False
+                    if staff_user.id in self.config.get('ignored_users', []):
+                        return  # Ignore trusted users
+                        
+                    for role in staff_user.roles:
+                        if role.id in self.config.get('staff_roles', []):
+                            is_staff = True
+                            break
+                    
+                    if is_staff:
+                        # Record this action
+                        self.record_staff_action(staff_user.id, 'mass_kick', guild.id)
+                        
+                        # Check if it's part of suspicious pattern
+                        if self.check_suspicious_activity(staff_user.id, 'mass_kick', guild.id):
+                            await self.log_security_event(
+                                guild,
+                                f"⚠️ CRITICAL: Staff member {staff_user.mention} performing mass kicks",
+                                severity="critical",
+                                evidence=f"Kicked {member} - This is part of multiple rapid kicks"
+                            )
+                    break
+        except Exception as e:
+            print(f"Error in kick monitoring: {e}")
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel):
+        """Monitor for mass channel deletions"""
+        guild = channel.guild
+        try:
+            async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_delete):
+                if entry.target.id == channel.id:
+                    staff_user = entry.user
+                    
+                    # Check if this was done by a staff member
+                    is_staff = False
+                    if staff_user.id in self.config.get('ignored_users', []):
+                        return  # Ignore trusted users
+                        
+                    for role in staff_user.roles:
+                        if role.id in self.config.get('staff_roles', []):
+                            is_staff = True
+                            break
+                    
+                    if is_staff:
+                        # Record this action
+                        self.record_staff_action(staff_user.id, 'mass_channel_delete', guild.id)
+                        
+                        # Check if it's part of suspicious pattern
+                        if self.check_suspicious_activity(staff_user.id, 'mass_channel_delete', guild.id):
+                            await self.log_security_event(
+                                guild,
+                                f"⚠️ CRITICAL: Staff member {staff_user.mention} performing mass channel deletions",
+                                severity="critical",
+                                evidence=f"Deleted channel {channel.name} - This is part of multiple rapid channel deletions"
+                            )
+                    break
+        except Exception as e:
+            print(f"Error in channel delete monitoring: {e}")
+
+    @commands.group(name="secmon", invoke_without_command=True)
+    @commands.has_permissions(administrator=True)
+    async def secmon(self, ctx):
+        """Security monitoring configuration commands"""
+        await ctx.send("Security monitoring commands. Use `secmon set` to configure settings.")
+
+    @secmon.command(name="set")
+    @commands.has_permissions(administrator=True)
+    async def set_config(self, ctx, setting, *, value=None):
+        """Configure security monitoring settings"""
+        if setting == "log_channel":
+            # Convert mention to ID if needed
+            if value.startswith("<#") and value.endswith(">"):
+                value = value[2:-1]
+            
+            try:
+                channel_id = int(value)
+                channel = ctx.guild.get_channel(channel_id)
+                if not channel:
+                    return await ctx.send("Invalid channel.")
+                
+                self.config['log_channel_id'] = channel_id
+                self.save_config()
+                await ctx.send(f"Security logs will be sent to {channel.mention}")
+            except ValueError:
+                await ctx.send("Please provide a valid channel ID or mention.")
+                
+        elif setting == "staff_role":
+            if value.startswith("<@&") and value.endswith(">"):
+                value = value[3:-1]
+                
+            try:
+                role_id = int(value)
+                role = ctx.guild.get_role(role_id)
+                if not role:
+                    return await ctx.send("Invalid role.")
+                
+                if role_id not in self.config['staff_roles']:
+                    self.config['staff_roles'].append(role_id)
+                    self.save_config()
+                    await ctx.send(f"Added {role.name} to monitored staff roles.")
+                else:
+                    await ctx.send(f"{role.name} is already being monitored.")
+            except ValueError:
+                await ctx.send("Please provide a valid role ID or mention.")
+                
+        elif setting == "ignore_user":
+            if value.startswith("<@") and value.endswith(">"):
+                value = value[2:-1]
+                if value.startswith("!"):
+                    value = value[1:]
+                    
+            try:
+                user_id = int(value)
+                user = ctx.guild.get_member(user_id)
+                if not user:
+                    return await ctx.send("Invalid user.")
+                
+                if user_id not in self.config['ignored_users']:
+                    self.config['ignored_users'].append(user_id)
+                    self.save_config()
+                    await ctx.send(f"Added {user.name} to ignored users (their actions won't trigger alerts).")
+                else:
+                    await ctx.send(f"{user.name} is already being ignored.")
+            except ValueError:
+                await ctx.send("Please provide a valid user ID or mention.")
+                
+        elif setting == "alert_mode":
+            valid_modes = ['log', 'dm_owner', 'auto_revert']
+            if value not in valid_modes:
+                return await ctx.send(f"Invalid mode. Choose from: {', '.join(valid_modes)}")
+                
+            self.config['alert_mode'] = value
+            self.save_config()
+            
+            mode_descriptions = {
+                'log': "Log events only",
+                'dm_owner': "Log events and DM server owner on critical alerts",
+                'auto_revert': "Log events, DM owner, and attempt to auto-revert dangerous changes"
+            }
+            
+            await ctx.send(f"Alert mode set to: {value} - {mode_descriptions[value]}")
+            
+        else:
+            await ctx.send("Unknown setting. Available settings: log_channel, staff_role, ignore_user, alert_mode")
+
+    @secmon.command(name="status")
+    @commands.has_permissions(administrator=True)
+    async def show_status(self, ctx):
+        """Show current security monitoring configuration"""
+        embed = discord.Embed(
+            title="Security Monitoring Status",
+            color=discord.Color.blue(),
+            description="Current configuration for staff activity monitoring"
+        )
+        
+        # Log channel info
+        if self.config.get('log_channel_id'):
+            channel = ctx.guild.get_channel(int(self.config['log_channel_id']))
+            channel_value = f"{channel.mention}" if channel else "Invalid channel"
+        else:
+            channel_value = "Not set"
+        embed.add_field(name="Log Channel", value=channel_value, inline=False)
+        
+        # Staff roles being monitored
+        staff_roles = []
+        for role_id in self.config.get('staff_roles', []):
+            role = ctx.guild.get_role(int(role_id))
+            if role:
+                staff_roles.append(f"{role.name}")
+        
+        embed.add_field(
+            name="Monitored Staff Roles", 
+            value=", ".join(staff_roles) if staff_roles else "None set",
+            inline=False
+        )
+        
+        # Ignored users
+        ignored_users = []
+        for user_id in self.config.get('ignored_users', []):
+            user = ctx.guild.get_member(int(user_id))
+            if user:
+                ignored_users.append(f"{user.name}")
+        
+        embed.add_field(
+            name="Ignored Users", 
+            value=", ".join(ignored_users) if ignored_users else "None set",
+            inline=False
+        )
+        
+        # Alert mode
+        mode_descriptions = {
+            'log': "Log events only",
+            'dm_owner': "Log events and DM server owner on critical alerts",
+            'auto_revert': "Log events, DM owner, and attempt to auto-revert dangerous changes"
+        }
+        
+        embed.add_field(
+            name="Alert Mode", 
+            value=f"{self.config.get('alert_mode', 'log')} - {mode_descriptions.get(self.config.get('alert_mode', 'log'), 'Unknown')}",
+            inline=False
+        )
+        
+        await ctx.send(embed=embed)
+
+
 #--------------------------------------
 
 bot.tree.command(name="ban", description="Ban a member from the server")
@@ -2875,7 +3401,13 @@ async def on_command_error(ctx, error):
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
     await interaction.response.send_message("An error occurred while processing your command.", ephemeral=True)
-
+    
+@bot.event
+async def on_ready():
+    # Add the security monitor cog
+    await bot.add_cog(SecurityMonitor(bot))
+    print("Security monitoring system loaded!")
+    
 token = ""
 
 def main():
