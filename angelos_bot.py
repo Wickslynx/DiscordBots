@@ -1615,7 +1615,34 @@ class SecurityMonitor(commands.Cog):
                 await self.WICKS.send(embed=embed)
             except Exception as e:
                 print(f"Unable to DM: {e}")
-    
+
+    async def timeout_member(self, guild, member, minutes, reason):
+    """Apply timeout to a member"""
+    try:
+        # Calculate the timeout duration
+        duration = timedelta(minutes=minutes)
+        
+        # Apply the timeout
+        await member.timeout_for(duration, reason=reason)
+        
+        # Log the timeout action
+        await self.log_security_event(
+            guild,
+            f"🔒 Applied automatic timeout to {member.mention}",
+            severity="action",
+            evidence=f"Duration: {minutes} minutes\nReason: {reason}"
+        )
+        
+        return True
+    except Exception as e:
+        await self.log_security_event(
+            guild,
+            f"Failed to timeout {member.mention}",
+            severity="warning",
+            evidence=f"Error: {str(e)}"
+        )
+        return False
+        
     def record_staff_action(self, user_id, action_type, guild_id):
         """Record an action for monitoring frequency"""
         current_time = datetime.utcnow().timestamp()
