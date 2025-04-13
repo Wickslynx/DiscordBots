@@ -603,7 +603,24 @@ class ConfigResetConfirmation(discord.ui.View):
         self.stop()
 
 
-    
+
+# -------- VOTE VIEW --------
+
+
+class VoteView(discord.ui.View):
+    def __init__(self, message_id=None):
+        super().__init__(timeout=None)
+        self.message_id = message_id
+    @discord.ui.button(label="✔️ 0", style=discord.ButtonStyle.success, custom_id="upvote")
+    async def upvote_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await handle_upvote(interaction, self)
+
+    @discord.ui.button(label="🗙 0", style=discord.ButtonStyle.danger, custom_id="downvote")
+    async def downvote_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await handle_downvote(interaction, self)
+
+
+
 
 
 # ----------- TICKET SYSTEM -----------------
