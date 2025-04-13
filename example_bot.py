@@ -33,6 +33,9 @@ class Bot(commands.Bot):
         self.add_view(TicketView(ticket_system, None))
         self.add_view(TicketCreateView(ticket_system))
         self.daily_check.start()
+        
+        config_cog = self.bot.get_cog("ConfigCog")
+        guild_config = config_cog.get_guild_config(guild_id)
 
         self.WICKS = await bot.fetch_user(1159829981803860009)
         
@@ -116,6 +119,8 @@ vote_counts = {}
 # Global variables to store ticket configuration
 TICKET_CONFIG = {}
 ACTIVE_TICKETS = {}
+
+
 
 
 
