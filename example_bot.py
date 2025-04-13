@@ -181,6 +181,17 @@ class ReactionButtons(discord.ui.View):
         await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
 
 
+
+# ------------ CONFIG MODAL ---------
+
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+import json
+import os
+
+# Config command for discord.py
 class ConfigCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -247,8 +258,13 @@ class ConfigCog(commands.Cog):
         if action == "view":
             await self._handle_view_config(interaction)
         elif action == "set":
-            # For 'set', we'll need to show a modal for input
-            await interaction.response.send_modal(ConfigModal(self))
+            # Show a selection menu for which group of settings to configure
+            view = ConfigCategorySelector(self)
+            await interaction.response.send_message(
+                "📝 Select a category of settings to configure:",
+                view=view,
+                ephemeral=True
+            )
         elif action == "reset":
             await self._handle_reset_config(interaction)
 
@@ -337,8 +353,56 @@ class ConfigCog(commands.Cog):
             )
 
 
-# Modal for config input
-class ConfigModal(discord.ui.Modal, title="Bot Configuration"):
+# Dropdown menu to select which category of settings to modify
+class ConfigCategorySelector(discord.ui.View):
+    def __init__(self, cog):
+        super().__init__(timeout=120)
+        self.cog = cog
+        # Add the dropdown menu
+        self.add_item(CategorySelect(cog))
+
+
+class CategorySelect(discord.ui.Select):
+    def __init__(self, cog):
+        options = [
+            discord.SelectOption(
+                label="General Channels",
+                description="Welcome, Leaves, Announcements, etc.",
+                emoji="📋",
+                value="general_channels"
+            ),
+            discord.SelectOption(
+                label="Staff Channels",
+                description="Infractions, Promotions, Training, etc.",
+                emoji="🛠️",
+                value="staff_channels"
+            ),
+            discord.SelectOption(
+                label="Roles",
+                description="Staff Team, Awaiting Training, LOA, etc.",
+                emoji="👥",
+                value="roles"
+            )
+        ]
+        super().__init__(placeholder="Select a category...", min_values=1, max_values=1, options=options)
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        # Open the appropriate modal based on selection
+        if self.values[0] == "general_channels":
+            modal = GeneralChannelsModal(self.cog)
+        elif self.values[0] == "staff_channels":
+            modal = StaffChannelsModal(self.cog)
+        elif self.values[0] == "roles":
+            modal = RolesModal(self.cog)
+        else:
+            return
+        
+        await interaction.response.send_modal(modal)
+
+
+# Modal for general channels configuration
+class GeneralChannelsModal(discord.ui.Modal, title="General Channels Configuration"):
     def __init__(self, cog):
         super().__init__()
         self.cog = cog
@@ -362,10 +426,122 @@ class ConfigModal(discord.ui.Modal, title="Bot Configuration"):
             default=str(cog.config.get("ANNOUNCEMENT_CHANNEL_ID", "")),
             required=False
         )
+        self.request_channel = discord.ui.TextInput(
+            label="Request Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("REQUEST_CHANNEL_ID", "")),
+            required=False
+        )
+        self.suggest_channel = discord.ui.TextInput(
+            label="Suggestions Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("SUGGEST_CHANNEL_ID", "")),
+            required=False
+        )
+        
+        # Add the inputs to modal (max 5 per modal)
+        self.add_item(self.welcome_channel)
+        self.add_item(self.leaves_channel)
+        self.add_item(self.announcement_channel)
+        self.add_item(self.request_channel)
+        self.add_item(self.suggest_channel)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Create a dictionary of the updated values
+        updated_data = {
+            "WELCOME_CHANNEL_ID": self.welcome_channel.value,
+            "LEAVES_CHANNEL_ID": self.leaves_channel.value,
+            "ANNOUNCEMENT_CHANNEL_ID": self.announcement_channel.value,
+            "REQUEST_CHANNEL_ID": self.request_channel.value,
+            "SUGGEST_CHANNEL_ID": self.suggest_channel.value
+        }
+        
+        # Pass the updated data to the cog
+        await self.cog.update_config(interaction, updated_data)
+
+
+# Modal for staff channels configuration
+class StaffChannelsModal(discord.ui.Modal, title="Staff Channels Configuration"):
+    def __init__(self, cog):
+        super().__init__()
+        self.cog = cog
+        
+        # Create text inputs for each staff channel
+        self.infractions_channel = discord.ui.TextInput(
+            label="Infractions Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("INFRACTIONS_CHANNEL_ID", "")),
+            required=False
+        )
+        self.promotions_channel = discord.ui.TextInput(
+            label="Promotions Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("PROMOTIONS_CHANNEL_ID", "")),
+            required=False
+        )
+        self.retirements_channel = discord.ui.TextInput(
+            label="Retirements Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("RETIREMENTS_CHANNEL_ID", "")),
+            required=False
+        )
+        self.training_channel = discord.ui.TextInput(
+            label="Training Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("TRAINING_CHANNEL_ID", "")),
+            required=False
+        )
+        self.loa_channel = discord.ui.TextInput(
+            label="LOA Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("LOA_CHANNEL_ID", "")),
+            required=False
+        )
+        
+        # Add the inputs to modal
+        self.add_item(self.infractions_channel)
+        self.add_item(self.promotions_channel)
+        self.add_item(self.retirements_channel)
+        self.add_item(self.training_channel)
+        self.add_item(self.loa_channel)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Create a dictionary of the updated values
+        updated_data = {
+            "INFRACTIONS_CHANNEL_ID": self.infractions_channel.value,
+            "PROMOTIONS_CHANNEL_ID": self.promotions_channel.value,
+            "RETIREMENTS_CHANNEL_ID": self.retirements_channel.value,
+            "TRAINING_CHANNEL_ID": self.training_channel.value,
+            "LOA_CHANNEL_ID": self.loa_channel.value
+        }
+        
+        # Pass the updated data to the cog
+        await self.cog.update_config(interaction, updated_data)
+
+
+# Modal for role configuration
+class RolesModal(discord.ui.Modal, title="Roles Configuration"):
+    def __init__(self, cog):
+        super().__init__()
+        self.cog = cog
+        
+        # Create text inputs for each role
         self.staff_team = discord.ui.TextInput(
             label="Staff Team Role ID",
             placeholder="Enter role ID",
             default=str(cog.config.get("STAFF_TEAM_ID", "")),
+            required=False
+        )
+        self.awaiting_training = discord.ui.TextInput(
+            label="Awaiting Training Role ID",
+            placeholder="Enter role ID",
+            default=str(cog.config.get("AWAITING_TRAINING_ID", "")),
+            required=False
+        )
+        self.loa_role = discord.ui.TextInput(
+            label="LOA Role ID",
+            placeholder="Enter role ID",
+            default=str(cog.config.get("LOA_ID", "")),
             required=False
         )
         self.ownership_team = discord.ui.TextInput(
@@ -374,22 +550,28 @@ class ConfigModal(discord.ui.Modal, title="Bot Configuration"):
             default=str(cog.config.get("OT_ID", "")),
             required=False
         )
+        self.internal_affairs = discord.ui.TextInput(
+            label="Internal Affairs Role ID",
+            placeholder="Enter role ID",
+            default=str(cog.config.get("INTERNAL_AFFAIRS_ID", "")),
+            required=False
+        )
         
         # Add the inputs to modal
-        self.add_item(self.welcome_channel)
-        self.add_item(self.leaves_channel)
-        self.add_item(self.announcement_channel)
         self.add_item(self.staff_team)
+        self.add_item(self.awaiting_training)
+        self.add_item(self.loa_role)
         self.add_item(self.ownership_team)
+        self.add_item(self.internal_affairs)
 
     async def on_submit(self, interaction: discord.Interaction):
         # Create a dictionary of the updated values
         updated_data = {
-            "WELCOME_CHANNEL_ID": self.welcome_channel.value,
-            "LEAVES_CHANNEL_ID": self.leaves_channel.value,
-            "ANNOUNCEMENT_CHANNEL_ID": self.announcement_channel.value,
             "STAFF_TEAM_ID": self.staff_team.value,
-            "OT_ID": self.ownership_team.value
+            "AWAITING_TRAINING_ID": self.awaiting_training.value,
+            "LOA_ID": self.loa_role.value,
+            "OT_ID": self.ownership_team.value,
+            "INTERNAL_AFFAIRS_ID": self.internal_affairs.value
         }
         
         # Pass the updated data to the cog
@@ -421,20 +603,7 @@ class ConfigResetConfirmation(discord.ui.View):
         self.stop()
 
 
-class VoteView(discord.ui.View):
-    def __init__(self, message_id=None):
-        super().__init__(timeout=None)
-        self.message_id = message_id
-        
-    @discord.ui.button(label="✔️ 0", style=discord.ButtonStyle.success, custom_id="upvote")
-    async def upvote_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await handle_upvote(interaction, self)
-        
-    @discord.ui.button(label="🗙 0", style=discord.ButtonStyle.danger, custom_id="downvote")
-    async def downvote_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await handle_downvote(interaction, self)
-
-
+    
 
 
 # ----------- TICKET SYSTEM -----------------
