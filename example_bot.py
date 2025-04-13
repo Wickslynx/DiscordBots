@@ -180,6 +180,247 @@ class ReactionButtons(discord.ui.View):
         await interaction.message.edit(embed=embed, view=self)
         await interaction.response.send_message(f"LOA request denied!", ephemeral=True)
 
+
+class ConfigCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.config_file = 'config.json'
+        # Load existing config or create default
+        self._load_config()
+
+    def _load_config(self):
+        """Load the configuration from file or create default"""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    self.config = json.load(f)
+            else:
+                # Default configuration
+                self.config = {
+                    # Default channel IDs
+                    "WELCOME_CHANNEL_ID": 1337432747094048890,
+                    "LEAVES_CHANNEL_ID": 1337432777066549288,
+                    "ANNOUNCEMENT_CHANNEL_ID": 1223929286528991253,
+                    "REQUEST_CHANNEL_ID": 1337111618517073972,
+                    "INFRACTIONS_CHANNEL_ID": 1307758472179355718,
+                    "PROMOTIONS_CHANNEL_ID": 1310272690434736158,
+                    "SUGGEST_CHANNEL_ID": 1223930187868016670,
+                    "RETIREMENTS_CHANNEL_ID": 1337106483862831186,
+                    "TRAINING_CHANNEL_ID": 1312742612658163735,
+                    "INTERNAL_AFFAIRS_ID": 1308094201262637056,  # Role ID for Internal Affairs
+                    "LOA_CHANNEL_ID": 1308084741009838241,
+                    "OT_ID": 1223922259727483003,  # Role ID for Ownership Team
+                    "STAFF_TEAM_ID": 1223920619993956372,
+                    "AWAITING_TRAINING_ID": 1309972134604308500,
+                    "LOA_ID": 1322405982462017546
+                }
+                self._save_config()
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            # Fallback to default config
+            self.config = {}
+
+    def _save_config(self):
+        """Save the configuration to file"""
+        try:
+            with open(self.config_file, 'w') as f:
+                json.dump(self.config, f, indent=4)
+            return True
+        except Exception as e:
+            print(f"Error saving config: {e}")
+            return False
+
+    @app_commands.command(name="config", description="Configure the bot settings")
+    @app_commands.describe(
+        action="The action to perform (view, set, reset)"
+    )
+    @app_commands.choices(action=[
+        app_commands.Choice(name="view", value="view"),
+        app_commands.Choice(name="set", value="set"),
+        app_commands.Choice(name="reset", value="reset")
+    ])
+    async def config(self, interaction: discord.Interaction, action: str):
+        # Check admin permissions
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("❌ You need administrator permissions to use this command.", ephemeral=True)
+
+        if action == "view":
+            await self._handle_view_config(interaction)
+        elif action == "set":
+            # For 'set', we'll need to show a modal for input
+            await interaction.response.send_modal(ConfigModal(self))
+        elif action == "reset":
+            await self._handle_reset_config(interaction)
+
+    async def _handle_view_config(self, interaction: discord.Interaction):
+        """Display current configuration"""
+        embed = discord.Embed(
+            title="📊 Current Bot Configuration",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
+
+        # Channels section
+        channels_value = (
+            f"Welcome: <#{self.config.get('WELCOME_CHANNEL_ID', 'Not set')}>\n"
+            f"Leaves: <#{self.config.get('LEAVES_CHANNEL_ID', 'Not set')}>\n"
+            f"Announcements: <#{self.config.get('ANNOUNCEMENT_CHANNEL_ID', 'Not set')}>\n"
+            f"Requests: <#{self.config.get('REQUEST_CHANNEL_ID', 'Not set')}>\n"
+            f"Infractions: <#{self.config.get('INFRACTIONS_CHANNEL_ID', 'Not set')}>\n"
+            f"Promotions: <#{self.config.get('PROMOTIONS_CHANNEL_ID', 'Not set')}>\n"
+            f"Suggestions: <#{self.config.get('SUGGEST_CHANNEL_ID', 'Not set')}>\n"
+            f"Retirements: <#{self.config.get('RETIREMENTS_CHANNEL_ID', 'Not set')}>\n"
+            f"Training: <#{self.config.get('TRAINING_CHANNEL_ID', 'Not set')}>\n"
+            f"LOA: <#{self.config.get('LOA_CHANNEL_ID', 'Not set')}>"
+        )
+        embed.add_field(name="📋 Channels", value=channels_value, inline=False)
+
+        # Roles section
+        roles_value = (
+            f"Staff Team: <@&{self.config.get('STAFF_TEAM_ID', 'Not set')}>\n"
+            f"Awaiting Training: <@&{self.config.get('AWAITING_TRAINING_ID', 'Not set')}>\n"
+            f"LOA: <@&{self.config.get('LOA_ID', 'Not set')}>\n"
+            f"Ownership Team: <@&{self.config.get('OT_ID', 'Not set')}>\n"
+            f"Internal Affairs: <@&{self.config.get('INTERNAL_AFFAIRS_ID', 'Not set')}>"
+        )
+        embed.add_field(name="👥 Roles", value=roles_value, inline=False)
+        
+        embed.set_footer(text=f"Server ID: {interaction.guild_id}")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    async def _handle_reset_config(self, interaction: discord.Interaction):
+        """Reset configuration to default values"""
+        # Create a confirmation view with buttons
+        view = ConfigResetConfirmation(self)
+        await interaction.response.send_message(
+            "⚠️ This will reset all configuration values to default. Are you sure?",
+            view=view,
+            ephemeral=True
+        )
+
+    async def update_config(self, interaction: discord.Interaction, data: dict):
+        """Update the configuration with new values"""
+        updated_count = 0
+        
+        for key, value in data.items():
+            if value and key in self.config:
+                # Try to convert to int for IDs
+                try:
+                    # Check if it's an ID (all digits)
+                    if value.isdigit():
+                        value = int(value)
+                    
+                    # Only update if different
+                    if self.config[key] != value:
+                        self.config[key] = value
+                        updated_count += 1
+                except ValueError:
+                    # If conversion fails, skip this entry
+                    continue
+        
+        if updated_count > 0:
+            success = self._save_config()
+            if success:
+                await interaction.response.send_message(
+                    f"✅ Configuration updated successfully! Updated {updated_count} setting(s).",
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    "❌ Failed to save configuration. Please check the logs.",
+                    ephemeral=True
+                )
+        else:
+            await interaction.response.send_message(
+                "ℹ️ No changes were made to the configuration.",
+                ephemeral=True
+            )
+
+
+# Modal for config input
+class ConfigModal(discord.ui.Modal, title="Bot Configuration"):
+    def __init__(self, cog):
+        super().__init__()
+        self.cog = cog
+        
+        # Create text inputs for each configuration
+        self.welcome_channel = discord.ui.TextInput(
+            label="Welcome Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("WELCOME_CHANNEL_ID", "")),
+            required=False
+        )
+        self.leaves_channel = discord.ui.TextInput(
+            label="Leaves Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("LEAVES_CHANNEL_ID", "")),
+            required=False
+        )
+        self.announcement_channel = discord.ui.TextInput(
+            label="Announcement Channel ID",
+            placeholder="Enter channel ID",
+            default=str(cog.config.get("ANNOUNCEMENT_CHANNEL_ID", "")),
+            required=False
+        )
+        self.staff_team = discord.ui.TextInput(
+            label="Staff Team Role ID",
+            placeholder="Enter role ID",
+            default=str(cog.config.get("STAFF_TEAM_ID", "")),
+            required=False
+        )
+        self.ownership_team = discord.ui.TextInput(
+            label="Ownership Team Role ID",
+            placeholder="Enter role ID",
+            default=str(cog.config.get("OT_ID", "")),
+            required=False
+        )
+        
+        # Add the inputs to modal
+        self.add_item(self.welcome_channel)
+        self.add_item(self.leaves_channel)
+        self.add_item(self.announcement_channel)
+        self.add_item(self.staff_team)
+        self.add_item(self.ownership_team)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Create a dictionary of the updated values
+        updated_data = {
+            "WELCOME_CHANNEL_ID": self.welcome_channel.value,
+            "LEAVES_CHANNEL_ID": self.leaves_channel.value,
+            "ANNOUNCEMENT_CHANNEL_ID": self.announcement_channel.value,
+            "STAFF_TEAM_ID": self.staff_team.value,
+            "OT_ID": self.ownership_team.value
+        }
+        
+        # Pass the updated data to the cog
+        await self.cog.update_config(interaction, updated_data)
+
+
+# Confirmation view for reset
+class ConfigResetConfirmation(discord.ui.View):
+    def __init__(self, cog):
+        super().__init__(timeout=60)
+        self.cog = cog
+
+    @discord.ui.button(label="Yes, Reset", style=discord.ButtonStyle.danger)
+    async def confirm_reset(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Reset config to default by deleting the file
+        try:
+            if os.path.exists(self.cog.config_file):
+                os.remove(self.cog.config_file)
+            # Reload default config
+            self.cog._load_config()
+            await interaction.response.send_message("✅ Configuration has been reset to default values.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Error resetting configuration: {e}", ephemeral=True)
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel_reset(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("❌ Reset cancelled.", ephemeral=True)
+        self.stop()
+
+
 class VoteView(discord.ui.View):
     def __init__(self, message_id=None):
         super().__init__(timeout=None)
@@ -3310,8 +3551,9 @@ async def on_app_command_error(interaction: discord.Interaction, error: discord.
 @bot.event
 async def on_ready():
     # Add the security monitor cog
+    await bot.add_cog(ConfigCog(bot))
     await bot.add_cog(SecurityMonitor(bot))
-    print("Security monitoring system loaded!")
+    print("Security monitoring system and Config cogs are loaded.")
     
 token = ""
 
