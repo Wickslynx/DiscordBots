@@ -12,7 +12,7 @@ intents.reactions = True
 bot = commands.Bot(
     command_prefix=';',
     intents=intents,
-    application_id=1336770228134088846
+    application_id=1361017411746136145
 )
 
 @bot.event
