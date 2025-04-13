@@ -191,52 +191,72 @@ from discord import app_commands
 from discord.ext import commands
 import json
 import os
+from typing import Dict, Any, Optional
+
+# Main configuration variables (these are the ones you're already using in your bot)
+WELCOME_CHANNEL_ID = 1337432747094048890
+LEAVES_CHANNEL_ID = 1337432777066549288
+ANNOUNCEMENT_CHANNEL_ID = 1223929286528991253
+REQUEST_CHANNEL_ID = 1337111618517073972
+INFRACTIONS_CHANNEL_ID = 1307758472179355718
+PROMOTIONS_CHANNEL_ID = 1310272690434736158
+SUGGEST_CHANNEL_ID = 1223930187868016670
+RETIREMENTS_CHANNEL_ID = 1337106483862831186
+TRAINING_CHANNEL_ID = 1312742612658163735
+INTERNAL_AFFAIRS_ID = 1308094201262637056
+LOA_CHANNEL_ID = 1308084741009838241
+OT_ID = 1223922259727483003
+STAFF_TEAM_ID = 1223920619993956372
+AWAITING_TRAINING_ID = 1309972134604308500
+LOA_ID = 1322405982462017546
 
 # Config command for discord.py
 class ConfigCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config_file = 'config.json'
-        # Load existing config or create default
+        # Load saved configuration if it exists
         self._load_config()
-
+        
     def _load_config(self):
-        """Load the configuration from file or create default"""
+        """Load the configuration from file and update global variables"""
         try:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r') as f:
-                    self.config = json.load(f)
-            else:
-                # Default configuration
-                self.config = {
-                    # Default channel IDs
-                    "WELCOME_CHANNEL_ID": 1337432747094048890,
-                    "LEAVES_CHANNEL_ID": 1337432777066549288,
-                    "ANNOUNCEMENT_CHANNEL_ID": 1223929286528991253,
-                    "REQUEST_CHANNEL_ID": 1337111618517073972,
-                    "INFRACTIONS_CHANNEL_ID": 1307758472179355718,
-                    "PROMOTIONS_CHANNEL_ID": 1310272690434736158,
-                    "SUGGEST_CHANNEL_ID": 1223930187868016670,
-                    "RETIREMENTS_CHANNEL_ID": 1337106483862831186,
-                    "TRAINING_CHANNEL_ID": 1312742612658163735,
-                    "INTERNAL_AFFAIRS_ID": 1308094201262637056,  # Role ID for Internal Affairs
-                    "LOA_CHANNEL_ID": 1308084741009838241,
-                    "OT_ID": 1223922259727483003,  # Role ID for Ownership Team
-                    "STAFF_TEAM_ID": 1223920619993956372,
-                    "AWAITING_TRAINING_ID": 1309972134604308500,
-                    "LOA_ID": 1322405982462017546
-                }
-                self._save_config()
+                    config_data = json.load(f)
+                    
+                    # Update global variables with saved values
+                    for key, value in config_data.items():
+                        if key in globals():
+                            globals()[key] = value
+                            
         except Exception as e:
             print(f"Error loading config: {e}")
-            # Fallback to default config
-            self.config = {}
-
+            
     def _save_config(self):
-        """Save the configuration to file"""
+        """Save the current global variables to config file"""
         try:
+            # Collect all config variables into a dictionary
+            config_data = {
+                "WELCOME_CHANNEL_ID": globals().get("WELCOME_CHANNEL_ID"),
+                "LEAVES_CHANNEL_ID": globals().get("LEAVES_CHANNEL_ID"),
+                "ANNOUNCEMENT_CHANNEL_ID": globals().get("ANNOUNCEMENT_CHANNEL_ID"),
+                "REQUEST_CHANNEL_ID": globals().get("REQUEST_CHANNEL_ID"),
+                "INFRACTIONS_CHANNEL_ID": globals().get("INFRACTIONS_CHANNEL_ID"),
+                "PROMOTIONS_CHANNEL_ID": globals().get("PROMOTIONS_CHANNEL_ID"),
+                "SUGGEST_CHANNEL_ID": globals().get("SUGGEST_CHANNEL_ID"),
+                "RETIREMENTS_CHANNEL_ID": globals().get("RETIREMENTS_CHANNEL_ID"),
+                "TRAINING_CHANNEL_ID": globals().get("TRAINING_CHANNEL_ID"),
+                "INTERNAL_AFFAIRS_ID": globals().get("INTERNAL_AFFAIRS_ID"),
+                "LOA_CHANNEL_ID": globals().get("LOA_CHANNEL_ID"),
+                "OT_ID": globals().get("OT_ID"),
+                "STAFF_TEAM_ID": globals().get("STAFF_TEAM_ID"),
+                "AWAITING_TRAINING_ID": globals().get("AWAITING_TRAINING_ID"),
+                "LOA_ID": globals().get("LOA_ID"),
+            }
+            
             with open(self.config_file, 'w') as f:
-                json.dump(self.config, f, indent=4)
+                json.dump(config_data, f, indent=4)
             return True
         except Exception as e:
             print(f"Error saving config: {e}")
@@ -259,11 +279,10 @@ class ConfigCog(commands.Cog):
         if action == "view":
             await self._handle_view_config(interaction)
         elif action == "set":
-            # Show a selection menu for which group of settings to configure
-            view = ConfigCategorySelector(self)
+            # Show configuration selection menu
             await interaction.response.send_message(
-                "📝 Select a category of settings to configure:",
-                view=view,
+                "📝 Select which setting you'd like to configure:",
+                view=ConfigSettingSelector(self.bot),
                 ephemeral=True
             )
         elif action == "reset":
@@ -279,26 +298,26 @@ class ConfigCog(commands.Cog):
 
         # Channels section
         channels_value = (
-            f"Welcome: <#{self.config.get('WELCOME_CHANNEL_ID', 'Not set')}>\n"
-            f"Leaves: <#{self.config.get('LEAVES_CHANNEL_ID', 'Not set')}>\n"
-            f"Announcements: <#{self.config.get('ANNOUNCEMENT_CHANNEL_ID', 'Not set')}>\n"
-            f"Requests: <#{self.config.get('REQUEST_CHANNEL_ID', 'Not set')}>\n"
-            f"Infractions: <#{self.config.get('INFRACTIONS_CHANNEL_ID', 'Not set')}>\n"
-            f"Promotions: <#{self.config.get('PROMOTIONS_CHANNEL_ID', 'Not set')}>\n"
-            f"Suggestions: <#{self.config.get('SUGGEST_CHANNEL_ID', 'Not set')}>\n"
-            f"Retirements: <#{self.config.get('RETIREMENTS_CHANNEL_ID', 'Not set')}>\n"
-            f"Training: <#{self.config.get('TRAINING_CHANNEL_ID', 'Not set')}>\n"
-            f"LOA: <#{self.config.get('LOA_CHANNEL_ID', 'Not set')}>"
+            f"Welcome: <#{globals().get('WELCOME_CHANNEL_ID', 'Not set')}>\n"
+            f"Leaves: <#{globals().get('LEAVES_CHANNEL_ID', 'Not set')}>\n"
+            f"Announcements: <#{globals().get('ANNOUNCEMENT_CHANNEL_ID', 'Not set')}>\n"
+            f"Requests: <#{globals().get('REQUEST_CHANNEL_ID', 'Not set')}>\n"
+            f"Infractions: <#{globals().get('INFRACTIONS_CHANNEL_ID', 'Not set')}>\n"
+            f"Promotions: <#{globals().get('PROMOTIONS_CHANNEL_ID', 'Not set')}>\n"
+            f"Suggestions: <#{globals().get('SUGGEST_CHANNEL_ID', 'Not set')}>\n"
+            f"Retirements: <#{globals().get('RETIREMENTS_CHANNEL_ID', 'Not set')}>\n"
+            f"Training: <#{globals().get('TRAINING_CHANNEL_ID', 'Not set')}>\n"
+            f"LOA: <#{globals().get('LOA_CHANNEL_ID', 'Not set')}>"
         )
         embed.add_field(name="📋 Channels", value=channels_value, inline=False)
 
         # Roles section
         roles_value = (
-            f"Staff Team: <@&{self.config.get('STAFF_TEAM_ID', 'Not set')}>\n"
-            f"Awaiting Training: <@&{self.config.get('AWAITING_TRAINING_ID', 'Not set')}>\n"
-            f"LOA: <@&{self.config.get('LOA_ID', 'Not set')}>\n"
-            f"Ownership Team: <@&{self.config.get('OT_ID', 'Not set')}>\n"
-            f"Internal Affairs: <@&{self.config.get('INTERNAL_AFFAIRS_ID', 'Not set')}>"
+            f"Staff Team: <@&{globals().get('STAFF_TEAM_ID', 'Not set')}>\n"
+            f"Awaiting Training: <@&{globals().get('AWAITING_TRAINING_ID', 'Not set')}>\n"
+            f"LOA: <@&{globals().get('LOA_ID', 'Not set')}>\n"
+            f"Ownership Team: <@&{globals().get('OT_ID', 'Not set')}>\n"
+            f"Internal Affairs: <@&{globals().get('INTERNAL_AFFAIRS_ID', 'Not set')}>"
         )
         embed.add_field(name="👥 Roles", value=roles_value, inline=False)
         
@@ -308,300 +327,334 @@ class ConfigCog(commands.Cog):
     async def _handle_reset_config(self, interaction: discord.Interaction):
         """Reset configuration to default values"""
         # Create a confirmation view with buttons
-        view = ConfigResetConfirmation(self)
+        view = ConfigResetConfirmation()
         await interaction.response.send_message(
             "⚠️ This will reset all configuration values to default. Are you sure?",
             view=view,
             ephemeral=True
         )
 
-    async def update_config(self, interaction: discord.Interaction, data: dict):
-        """Update the configuration with new values"""
-        updated_count = 0
-        
-        for key, value in data.items():
-            if value and key in self.config:
-                # Try to convert to int for IDs
-                try:
-                    # Check if it's an ID (all digits)
-                    if value.isdigit():
-                        value = int(value)
-                    
-                    # Only update if different
-                    if self.config[key] != value:
-                        self.config[key] = value
-                        updated_count += 1
-                except ValueError:
-                    # If conversion fails, skip this entry
-                    continue
-        
-        if updated_count > 0:
-            success = self._save_config()
-            if success:
-                await interaction.response.send_message(
-                    f"✅ Configuration updated successfully! Updated {updated_count} setting(s).",
-                    ephemeral=True
-                )
-            else:
-                await interaction.response.send_message(
-                    "❌ Failed to save configuration. Please check the logs.",
-                    ephemeral=True
-                )
-        else:
-            await interaction.response.send_message(
-                "ℹ️ No changes were made to the configuration.",
-                ephemeral=True
-            )
 
-
-# Dropdown menu to select which category of settings to modify
-class ConfigCategorySelector(discord.ui.View):
-    def __init__(self, cog):
+# Main configuration selection menu
+class ConfigSettingSelector(discord.ui.View):
+    def __init__(self, bot):
         super().__init__(timeout=120)
-        self.cog = cog
-        # Add the dropdown menu
-        self.add_item(CategorySelect(cog))
+        self.bot = bot
+        
+        # Add the category select
+        self.add_item(ConfigCategorySelect())
 
 
-class CategorySelect(discord.ui.Select):
-    def __init__(self, cog):
+class ConfigCategorySelect(discord.ui.Select):
+    def __init__(self):
         options = [
             discord.SelectOption(
-                label="General Channels",
-                description="Welcome, Leaves, Announcements, etc.",
-                emoji="📋",
-                value="general_channels"
+                label="Channel Settings",
+                description="Configure channel IDs",
+                emoji="📝",
+                value="channels"
             ),
             discord.SelectOption(
-                label="Staff Channels",
-                description="Infractions, Promotions, Training, etc.",
-                emoji="🛠️",
-                value="staff_channels"
-            ),
-            discord.SelectOption(
-                label="Roles",
-                description="Staff Team, Awaiting Training, LOA, etc.",
+                label="Role Settings",
+                description="Configure role IDs",
                 emoji="👥",
                 value="roles"
             )
         ]
         super().__init__(placeholder="Select a category...", min_values=1, max_values=1, options=options)
-        self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        # Open the appropriate modal based on selection
-        if self.values[0] == "general_channels":
-            modal = GeneralChannelsModal(self.cog)
-        elif self.values[0] == "staff_channels":
-            modal = StaffChannelsModal(self.cog)
+        if self.values[0] == "channels":
+            # Show channel selection view
+            await interaction.response.edit_message(
+                content="🔧 Select which channel to configure:", 
+                view=ChannelConfigView(interaction.guild)
+            )
         elif self.values[0] == "roles":
-            modal = RolesModal(self.cog)
-        else:
-            return
-        
-        await interaction.response.send_modal(modal)
+            # Show role selection view
+            await interaction.response.edit_message(
+                content="🔧 Select which role to configure:", 
+                view=RoleConfigView(interaction.guild)
+            )
 
 
-# Modal for general channels configuration
-class GeneralChannelsModal(discord.ui.Modal, title="General Channels Configuration"):
-    def __init__(self, cog):
-        super().__init__()
-        self.cog = cog
+# Channel configuration view
+class ChannelConfigView(discord.ui.View):
+    def __init__(self, guild):
+        super().__init__(timeout=180)
+        self.guild = guild
         
-        # Create text inputs for each configuration
-        self.welcome_channel = discord.ui.TextInput(
-            label="Welcome Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("WELCOME_CHANNEL_ID", "")),
-            required=False
-        )
-        self.leaves_channel = discord.ui.TextInput(
-            label="Leaves Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("LEAVES_CHANNEL_ID", "")),
-            required=False
-        )
-        self.announcement_channel = discord.ui.TextInput(
-            label="Announcement Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("ANNOUNCEMENT_CHANNEL_ID", "")),
-            required=False
-        )
-        self.request_channel = discord.ui.TextInput(
-            label="Request Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("REQUEST_CHANNEL_ID", "")),
-            required=False
-        )
-        self.suggest_channel = discord.ui.TextInput(
-            label="Suggestions Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("SUGGEST_CHANNEL_ID", "")),
-            required=False
-        )
+        # Add the channel select dropdown
+        self.add_item(ChannelConfigSelect(guild))
         
-        # Add the inputs to modal (max 5 per modal)
-        self.add_item(self.welcome_channel)
-        self.add_item(self.leaves_channel)
-        self.add_item(self.announcement_channel)
-        self.add_item(self.request_channel)
-        self.add_item(self.suggest_channel)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        # Create a dictionary of the updated values
-        updated_data = {
-            "WELCOME_CHANNEL_ID": self.welcome_channel.value,
-            "LEAVES_CHANNEL_ID": self.leaves_channel.value,
-            "ANNOUNCEMENT_CHANNEL_ID": self.announcement_channel.value,
-            "REQUEST_CHANNEL_ID": self.request_channel.value,
-            "SUGGEST_CHANNEL_ID": self.suggest_channel.value
-        }
-        
-        # Pass the updated data to the cog
-        await self.cog.update_config(interaction, updated_data)
+        # Add back button
+        self.add_item(BackButton())
 
 
-# Modal for staff channels configuration
-class StaffChannelsModal(discord.ui.Modal, title="Staff Channels Configuration"):
-    def __init__(self, cog):
-        super().__init__()
-        self.cog = cog
-        
-        # Create text inputs for each staff channel
-        self.infractions_channel = discord.ui.TextInput(
-            label="Infractions Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("INFRACTIONS_CHANNEL_ID", "")),
-            required=False
-        )
-        self.promotions_channel = discord.ui.TextInput(
-            label="Promotions Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("PROMOTIONS_CHANNEL_ID", "")),
-            required=False
-        )
-        self.retirements_channel = discord.ui.TextInput(
-            label="Retirements Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("RETIREMENTS_CHANNEL_ID", "")),
-            required=False
-        )
-        self.training_channel = discord.ui.TextInput(
-            label="Training Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("TRAINING_CHANNEL_ID", "")),
-            required=False
-        )
-        self.loa_channel = discord.ui.TextInput(
-            label="LOA Channel ID",
-            placeholder="Enter channel ID",
-            default=str(cog.config.get("LOA_CHANNEL_ID", "")),
-            required=False
-        )
-        
-        # Add the inputs to modal
-        self.add_item(self.infractions_channel)
-        self.add_item(self.promotions_channel)
-        self.add_item(self.retirements_channel)
-        self.add_item(self.training_channel)
-        self.add_item(self.loa_channel)
+class ChannelConfigSelect(discord.ui.Select):
+    def __init__(self, guild):
+        # Create options for each configurable channel
+        options = [
+            discord.SelectOption(
+                label="Welcome Channel",
+                description="Channel for welcome messages",
+                value="WELCOME_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="Leaves Channel",
+                description="Channel for leave messages",
+                value="LEAVES_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="Announcement Channel",
+                description="Channel for announcements",
+                value="ANNOUNCEMENT_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="Request Channel",
+                description="Channel for requests",
+                value="REQUEST_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="Infractions Channel",
+                description="Channel for infractions",
+                value="INFRACTIONS_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="Promotions Channel",
+                description="Channel for promotions",
+                value="PROMOTIONS_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="Suggestions Channel",
+                description="Channel for suggestions",
+                value="SUGGEST_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="Retirements Channel",
+                description="Channel for retirements",
+                value="RETIREMENTS_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="Training Channel",
+                description="Channel for training",
+                value="TRAINING_CHANNEL_ID"
+            ),
+            discord.SelectOption(
+                label="LOA Channel",
+                description="Channel for leave of absence",
+                value="LOA_CHANNEL_ID"
+            )
+        ]
+        super().__init__(placeholder="Select a channel to configure...", min_values=1, max_values=1, options=options)
+        self.guild = guild
 
-    async def on_submit(self, interaction: discord.Interaction):
-        # Create a dictionary of the updated values
-        updated_data = {
-            "INFRACTIONS_CHANNEL_ID": self.infractions_channel.value,
-            "PROMOTIONS_CHANNEL_ID": self.promotions_channel.value,
-            "RETIREMENTS_CHANNEL_ID": self.retirements_channel.value,
-            "TRAINING_CHANNEL_ID": self.training_channel.value,
-            "LOA_CHANNEL_ID": self.loa_channel.value
-        }
-        
-        # Pass the updated data to the cog
-        await self.cog.update_config(interaction, updated_data)
+    async def callback(self, interaction: discord.Interaction):
+        # Show channel selection UI
+        await interaction.response.edit_message(
+            content=f"Select a channel to set as the **{self.values[0].replace('_ID', '').replace('_', ' ').title()}**:",
+            view=ChannelSelectionView(self.guild, self.values[0])
+        )
 
 
-# Modal for role configuration
-class RolesModal(discord.ui.Modal, title="Roles Configuration"):
-    def __init__(self, cog):
-        super().__init__()
-        self.cog = cog
+# Channel selection view
+class ChannelSelectionView(discord.ui.View):
+    def __init__(self, guild, config_key):
+        super().__init__(timeout=180)
+        self.guild = guild
+        self.config_key = config_key
         
-        # Create text inputs for each role
-        self.staff_team = discord.ui.TextInput(
-            label="Staff Team Role ID",
-            placeholder="Enter role ID",
-            default=str(cog.config.get("STAFF_TEAM_ID", "")),
-            required=False
-        )
-        self.awaiting_training = discord.ui.TextInput(
-            label="Awaiting Training Role ID",
-            placeholder="Enter role ID",
-            default=str(cog.config.get("AWAITING_TRAINING_ID", "")),
-            required=False
-        )
-        self.loa_role = discord.ui.TextInput(
-            label="LOA Role ID",
-            placeholder="Enter role ID",
-            default=str(cog.config.get("LOA_ID", "")),
-            required=False
-        )
-        self.ownership_team = discord.ui.TextInput(
-            label="Ownership Team Role ID",
-            placeholder="Enter role ID",
-            default=str(cog.config.get("OT_ID", "")),
-            required=False
-        )
-        self.internal_affairs = discord.ui.TextInput(
-            label="Internal Affairs Role ID",
-            placeholder="Enter role ID",
-            default=str(cog.config.get("INTERNAL_AFFAIRS_ID", "")),
-            required=False
-        )
+        # Add channel selector
+        self.add_item(ChannelSelector(guild))
         
-        # Add the inputs to modal
-        self.add_item(self.staff_team)
-        self.add_item(self.awaiting_training)
-        self.add_item(self.loa_role)
-        self.add_item(self.ownership_team)
-        self.add_item(self.internal_affairs)
+        # Add back button
+        self.add_item(BackButton())
 
-    async def on_submit(self, interaction: discord.Interaction):
-        # Create a dictionary of the updated values
-        updated_data = {
-            "STAFF_TEAM_ID": self.staff_team.value,
-            "AWAITING_TRAINING_ID": self.awaiting_training.value,
-            "LOA_ID": self.loa_role.value,
-            "OT_ID": self.ownership_team.value,
-            "INTERNAL_AFFAIRS_ID": self.internal_affairs.value
-        }
+
+class ChannelSelector(discord.ui.ChannelSelect):
+    def __init__(self, guild):
+        super().__init__(placeholder="Select a channel...", channel_types=[discord.ChannelType.text])
+    
+    async def callback(self, interaction: discord.Interaction):
+        channel = self.values[0]
+        config_key = self.view.config_key
         
-        # Pass the updated data to the cog
-        await self.cog.update_config(interaction, updated_data)
+        # Get the parent view's config_key to know which setting to update
+        try:
+            # Update the global variable
+            globals()[config_key] = channel.id
+            
+            # Save the configuration
+            config_cog = interaction.client.get_cog("ConfigCog")
+            if config_cog:
+                config_cog._save_config()
+            
+            await interaction.response.edit_message(
+                content=f"✅ Successfully set {config_key.replace('_ID', '').replace('_', ' ').title()} to {channel.mention}",
+                view=None
+            )
+        except Exception as e:
+            await interaction.response.edit_message(
+                content=f"❌ Error setting channel: {e}",
+                view=None
+            )
+
+
+# Role configuration view
+class RoleConfigView(discord.ui.View):
+    def __init__(self, guild):
+        super().__init__(timeout=180)
+        self.guild = guild
+        
+        # Add the role select dropdown
+        self.add_item(RoleConfigSelect(guild))
+        
+        # Add back button
+        self.add_item(BackButton())
+
+
+class RoleConfigSelect(discord.ui.Select):
+    def __init__(self, guild):
+        # Create options for each configurable role
+        options = [
+            discord.SelectOption(
+                label="Staff Team Role",
+                description="Role for staff team members",
+                value="STAFF_TEAM_ID"
+            ),
+            discord.SelectOption(
+                label="Awaiting Training Role",
+                description="Role for members awaiting training",
+                value="AWAITING_TRAINING_ID"
+            ),
+            discord.SelectOption(
+                label="LOA Role",
+                description="Role for members on leave of absence",
+                value="LOA_ID"
+            ),
+            discord.SelectOption(
+                label="Ownership Team Role",
+                description="Role for ownership team",
+                value="OT_ID"
+            ),
+            discord.SelectOption(
+                label="Internal Affairs Role",
+                description="Role for internal affairs team",
+                value="INTERNAL_AFFAIRS_ID"
+            )
+        ]
+        super().__init__(placeholder="Select a role to configure...", min_values=1, max_values=1, options=options)
+        self.guild = guild
+
+    async def callback(self, interaction: discord.Interaction):
+        # Show role selection UI
+        await interaction.response.edit_message(
+            content=f"Select a role to set as the **{self.values[0].replace('_ID', '').replace('_', ' ').title()}**:",
+            view=RoleSelectionView(self.guild, self.values[0])
+        )
+
+
+# Role selection view
+class RoleSelectionView(discord.ui.View):
+    def __init__(self, guild, config_key):
+        super().__init__(timeout=180)
+        self.guild = guild
+        self.config_key = config_key
+        
+        # Add role selector
+        self.add_item(RoleSelector())
+        
+        # Add back button
+        self.add_item(BackButton())
+
+
+class RoleSelector(discord.ui.RoleSelect):
+    def __init__(self):
+        super().__init__(placeholder="Select a role...")
+    
+    async def callback(self, interaction: discord.Interaction):
+        role = self.values[0]
+        config_key = self.view.config_key
+        
+        try:
+            # Update the global variable
+            globals()[config_key] = role.id
+            
+            # Save the configuration
+            config_cog = interaction.client.get_cog("ConfigCog")
+            if config_cog:
+                config_cog._save_config()
+            
+            await interaction.response.edit_message(
+                content=f"✅ Successfully set {config_key.replace('_ID', '').replace('_', ' ').title()} to {role.mention}",
+                view=None
+            )
+        except Exception as e:
+            await interaction.response.edit_message(
+                content=f"❌ Error setting role: {e}",
+                view=None
+            )
+
+
+# Back button for navigation
+class BackButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.secondary, label="Back", row=4)
+    
+    async def callback(self, interaction: discord.Interaction):
+        # Go back to main category selector
+        await interaction.response.edit_message(
+            content="📝 Select which setting you'd like to configure:",
+            view=ConfigSettingSelector(interaction.client)
+        )
 
 
 # Confirmation view for reset
 class ConfigResetConfirmation(discord.ui.View):
-    def __init__(self, cog):
+    def __init__(self):
         super().__init__(timeout=60)
-        self.cog = cog
 
     @discord.ui.button(label="Yes, Reset", style=discord.ButtonStyle.danger)
     async def confirm_reset(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Reset config to default by deleting the file
-        try:
-            if os.path.exists(self.cog.config_file):
-                os.remove(self.cog.config_file)
-            # Reload default config
-            self.cog._load_config()
-            await interaction.response.send_message("✅ Configuration has been reset to default values.", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ Error resetting configuration: {e}", ephemeral=True)
-        self.stop()
+        # Reset all global variables to their default values
+        global WELCOME_CHANNEL_ID, LEAVES_CHANNEL_ID, ANNOUNCEMENT_CHANNEL_ID
+        global REQUEST_CHANNEL_ID, INFRACTIONS_CHANNEL_ID, PROMOTIONS_CHANNEL_ID
+        global SUGGEST_CHANNEL_ID, RETIREMENTS_CHANNEL_ID, TRAINING_CHANNEL_ID
+        global INTERNAL_AFFAIRS_ID, LOA_CHANNEL_ID, OT_ID
+        global STAFF_TEAM_ID, AWAITING_TRAINING_ID, LOA_ID
+        
+        # Reset to default values
+        WELCOME_CHANNEL_ID = None
+        LEAVES_CHANNEL_ID = None
+        ANNOUNCEMENT_CHANNEL_ID = None
+        REQUEST_CHANNEL_ID = None
+        INFRACTIONS_CHANNEL_ID = None
+        PROMOTIONS_CHANNEL_ID = None
+        SUGGEST_CHANNEL_ID = None
+        RETIREMENTS_CHANNEL_ID = None
+        TRAINING_CHANNEL_ID = None
+        INTERNAL_AFFAIRS_ID = None
+        LOA_CHANNEL_ID = None
+        OT_ID = None
+        STAFF_TEAM_ID = None
+        AWAITING_TRAINING_ID = None
+        LOA_ID = None
+        
+        # Save the reset configuration
+        config_cog = interaction.client.get_cog("ConfigCog")
+        if config_cog:
+            config_cog._save_config()
+        
+        await interaction.response.edit_message(
+            content="✅ Configuration has been reset to default values.",
+            view=None
+        )
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel_reset(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("❌ Reset cancelled.", ephemeral=True)
-        self.stop()
+        await interaction.response.edit_message(content="❌ Reset cancelled.", view=None)
+
+
 
 
 
