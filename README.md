@@ -4,6 +4,10 @@ These are the source codes for my discord bots i have built for different ERLC s
 
 These bots include:
 
+---- Organised bots -----
+Cipher V1, (All other versions are closed-source)
+
+---- Single file bots ------
 - **Los Angoles Roleplay Bot**
 - **Los Angelos Police Deparment Bot**
 - **AU | Tickets**
