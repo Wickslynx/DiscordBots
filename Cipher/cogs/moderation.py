@@ -5,10 +5,10 @@ import asyncio
 import json
 from datetime import datetime
 
-MODERATION_LOG_CHANNEL_ID = 123456789012345678  # Replace with actual ID
-MODERATOR_ROLE_ID = 987654321098765432         # Replace with actual ID
-OT_ROLE_ID = 111111111111111111                # Replace with actual ID
-WICKS = 222222222222222222                     # Replace with your bot's owner ID
+MODERATION_LOG_CHANNEL_ID = 123456789012345678  # TODO: Get config from config cog.
+MODERATOR_ROLE_ID = 987654321098765432         
+OT_ROLE_ID = 111111111111111111               
+WICKS = 222222222222222222                     # -- My user ID, will be hardcoded to be able to use all commmands --
 WARNINGS_FILE = 'storage/warnings.json'
 
 
