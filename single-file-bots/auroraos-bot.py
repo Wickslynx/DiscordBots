@@ -56,9 +56,8 @@ def load_warnings():
         if os.path.exists(WARNINGS_FILE):
             with open(WARNINGS_FILE, 'r') as f:
                 content = f.read().strip()
-                if content:  # Check if file is not empty
+                if content:  
                     return json.loads(content)
-        # Return empty dict if file doesn't exist or is empty
         return {}
     except json.JSONDecodeError as e:
         print(f"Error loading warnings file: {e}")
@@ -873,71 +872,6 @@ async def say(interaction: discord.Interaction, message: str):
         await interaction.channel.send(message)
     else:
         await interaction.response.send_message(f'Sorry {interaction.user.mention}, you do not have the required role to run this command.', ephemeral=True)
-
-# Updated vote handling functions
-async def handle_upvote(interaction: discord.Interaction, view: VoteView):
-    if not view.message_id:
-        view.message_id = str(interaction.message.id)
-    
-    message_id = view.message_id
-    user_id = str(interaction.user.id)
-    
-    if message_id not in vote_counts:
-        vote_counts[message_id] = {"upvotes": 0, "downvotes": 0, "voted_users": {}}
-    
-    if user_id in vote_counts[message_id]["voted_users"] and vote_counts[message_id]["voted_users"][user_id] == "up":
-        vote_counts[message_id]["upvotes"] -= 1
-        del vote_counts[message_id]["voted_users"][user_id]
-    else:
-        if user_id in vote_counts[message_id]["voted_users"] and vote_counts[message_id]["voted_users"][user_id] == "down":
-            vote_counts[message_id]["downvotes"] -= 1
-        
-        vote_counts[message_id]["upvotes"] += 1
-        vote_counts[message_id]["voted_users"][user_id] = "up"
-    
-    # Update button labels
-    for child in view.children:
-        if child.custom_id == "upvote":
-            child.label = f"✔️ {vote_counts[message_id]['upvotes']}"
-        elif child.custom_id == "downvote":
-            child.label = f"🗙 {vote_counts[message_id]['downvotes']}"
-    
-    # Save vote counts
-    save_vote_counts()
-    
-    await interaction.response.edit_message(view=view)
-
-async def handle_downvote(interaction: discord.Interaction, view: VoteView):
-    if not view.message_id:
-        view.message_id = str(interaction.message.id)
-    
-    message_id = view.message_id
-    user_id = str(interaction.user.id)
-    
-    if message_id not in vote_counts:
-        vote_counts[message_id] = {"upvotes": 0, "downvotes": 0, "voted_users": {}}
-    
-    if user_id in vote_counts[message_id]["voted_users"] and vote_counts[message_id]["voted_users"][user_id] == "down":
-        vote_counts[message_id]["downvotes"] -= 1
-        del vote_counts[message_id]["voted_users"][user_id]
-    else:
-        if user_id in vote_counts[message_id]["voted_users"] and vote_counts[message_id]["voted_users"][user_id] == "up":
-            vote_counts[message_id]["upvotes"] -= 1
-        
-        vote_counts[message_id]["downvotes"] += 1
-        vote_counts[message_id]["voted_users"][user_id] = "down"
-    
-    # Update button labels
-    for child in view.children:
-        if child.custom_id == "upvote":
-            child.label = f"✔️ {vote_counts[message_id]['upvotes']}"
-        elif child.custom_id == "downvote":
-            child.label = f"🗙 {vote_counts[message_id]['downvotes']}"
-    
-    # Save vote counts
-    save_vote_counts()
-    
-    await interaction.response.edit_message(view=view)
 
             
 
