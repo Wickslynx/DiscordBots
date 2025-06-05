@@ -34,6 +34,8 @@ class Bot(commands.Bot):
         self.WICKS = await self.fetch_user(1159829981803860009)
         print(f"Fetched user: {self.WICKS}")
 
+        await self.tree.sync()
+
 bot = Bot()
         
    
@@ -41,10 +43,10 @@ bot = Bot()
 bot = Bot()
 
 
-OT_ID = 1379824630361231401
-STAFF_ID = 1351445385196994600
+OT_ID = 
+STAFF_ID = 
 
-LOG_ID = 1355192082284675083
+LOG_ID = 
 
 WARNINGS_FILE = "storage/warnings.json"
 
@@ -594,6 +596,32 @@ async def purge(ctx, amount: int):
 
 
 # -------------------
+
+@bot.tree.command(name="rules", description="Get the server rules!")
+async def rules(interaction: discord.Interaction)
+    await interaction.response.send_message("""* Always follow Discord ToS (https://discordapp.com/terms) and Discord Community Guidelines (https://discordapp.com/guidelines)., 
+
+* Be respectful to others, do not start huge drama and arguments.,
+
+* Do not swear or use bad language. This is not a Call of Duty lobby, we are talking about programming here.
+
+* Hate speech, "doxxing," or leaking personal information will not be tolerated. Free speech isn't free of consequences.,
+
+* Sexual harassment, even slightly suggesting anything gender biased is inappropriate. 
+
+* Homophobic language or racial slurs are immature and you should not use them.,
+
+* Do not post explicitly sexual, gore or otherwise disturbing content. This includes jokes and memes that have somewhat racist background.,
+
+* Do not break the application (e.g. spamming the text that goes vertical, or having a name "everyone", etc...) and don't spam excessively (walls of emotes, etc...),
+
+* Avoid sensitive topics, such as politics or religion.,
+
+* Respect authority, and do not troll moderators on duty. Do not impersonate Admins or Mods, or anyone else.,
+
+* Don't join just to advertise your stuff, it's rude. This includes discord invite links, which will be automatically removed - get in touch with the Mods.,
+  Use common sense together with everything above.,""")
+    
 
 @bot.tree.command(name="lock", description="Lock a channel")
 async def lock(interaction: discord.Interaction, channel: discord.TextChannel = None):
