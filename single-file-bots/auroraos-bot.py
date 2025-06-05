@@ -43,10 +43,10 @@ bot = Bot()
 bot = Bot()
 
 
-OT_ID = 
-STAFF_ID = 
+OT_ID = 1379824630361231401
+STAFF_ID = 1351445385196994600
 
-LOG_ID = 
+LOG_ID = 1351206622558421084
 
 WARNINGS_FILE = "storage/warnings.json"
 
@@ -598,7 +598,7 @@ async def purge(ctx, amount: int):
 # -------------------
 
 @bot.tree.command(name="rules", description="Get the server rules!")
-async def rules(interaction: discord.Interaction)
+async def rules(interaction: discord.Interaction):
     await interaction.response.send_message("""* Always follow Discord ToS (https://discordapp.com/terms) and Discord Community Guidelines (https://discordapp.com/guidelines)., 
 
 * Be respectful to others, do not start huge drama and arguments.,
