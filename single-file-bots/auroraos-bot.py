@@ -85,7 +85,6 @@ async def ban(interaction: discord.Interaction, member: discord.Member, *, reaso
         return
 
     try:
-        # Send DM to user about the ban (optional)
         try:
             await member.send(f"You have been banned from {interaction.guild.name}. Reason: {reason}")
         except:
@@ -808,7 +807,7 @@ async def slowmode(ctx, seconds: int, channel: discord.TextChannel = None):
 
 role = app_commands.Group(name="role", description="Role related commands")
 
-@role.tree.command(name="add", description="Add a role to a member")
+@role.command(name="add", description="Add a role to a member")
 async def role_add(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=STAFF_ID)
@@ -837,7 +836,7 @@ async def role_add(interaction: discord.Interaction, member: discord.Member, rol
         await interaction.response.send_message(f"An error occurred: {str(e)}", ephemeral=True)
 
 
-@role.tree.command(name="remove", description="Remove a role from a member")
+@role.command(name="remove", description="Remove a role from a member")
 async def role_remove(interaction: discord.Interaction, member: discord.Member, role: discord.Role):
     # Check if user has moderator permissions
     moderator_role = discord.utils.get(interaction.guild.roles, id=STAFF_ID)
