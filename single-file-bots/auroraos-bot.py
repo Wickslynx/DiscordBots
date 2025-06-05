@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord.ext import app_commands
 from datetime import datetime, time, timedelta, timezone
 import json
 import os
@@ -12,12 +13,15 @@ import string
 
 Path("storage").mkdir(exist_ok=True)
 
-intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
-intents.reactions = True  
+import discord
+from discord.ext import commands
 
 class Bot(commands.Bot):
+    def __init__(self):
+
+        intents = discord.Intents.default()
+        intents.message_content = True  
+        
         self.WICKS = None
         
         super().__init__(
@@ -25,9 +29,12 @@ class Bot(commands.Bot):
             intents=intents,
             application_id='1380181236177309796'
         )
-
+    
     async def setup_hook(self):
-        self.WICKS = await bot.fetch_user(1159829981803860009)
+        self.WICKS = await self.fetch_user(1159829981803860009)
+        print(f"Fetched user: {self.WICKS}")
+
+bot = Bot()
         
    
 
